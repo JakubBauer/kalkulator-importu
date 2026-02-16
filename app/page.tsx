@@ -14,6 +14,8 @@ type AuctionHouse = "copart" | "iaai";
 type BuyerType = "private" | "company";
 type VehicleSize = "sedan" | "suv" | "bigsuv" | "oversize";
 
+type ExciseRate = 0.015 | 0.031 | 0.093 | 0.186;
+
 // ================= MNOŻNIKI WIELKOŚCI AUTA =================
 const SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
   sedan: 1,
@@ -304,7 +306,208 @@ const YARDS_USA: Yard[] = [
 
   { provider: "copart", state: "WY", city: "CASPER", label: "Standard", zip: "82601" },
 
-  // ===== IAAI (placeholder) =====
+  // ===== IAAI (USA) — z Twojej listy =====
+  { provider: "iaai", state: "TX", city: "ABILENE", zip: "79601" },
+  { provider: "iaai", state: "CA", city: "ACE - CARSON", zip: "90248" },
+  { provider: "iaai", state: "CA", city: "ACE - PERRIS", zip: "92571" },
+  { provider: "iaai", state: "CA", city: "ACE - PERRIS 2", zip: "92571" },
+  { provider: "iaai", state: "OH", city: "AKRON-CANTON", zip: "44663" },
+  { provider: "iaai", state: "NY", city: "ALBANY", zip: "12303" },
+  { provider: "iaai", state: "NM", city: "ALBUQUERQUE", zip: "87105" },
+  { provider: "iaai", state: "PA", city: "ALTOONA", zip: "16637" },
+  { provider: "iaai", state: "TX", city: "AMARILLO", zip: "79118" },
+  { provider: "iaai", state: "CA", city: "ANAHEIM", zip: "92806" },
+  { provider: "iaai", state: "CA", city: "ANAHEIM CONSOLIDATED", zip: "92806" },
+  { provider: "iaai", state: "AK", city: "ANCHORAGE", zip: "99654" },
+  { provider: "iaai", state: "WI", city: "APPLETON", zip: "54914" },
+  { provider: "iaai", state: "NC", city: "ASHEVILLE", zip: "28732" },
+  { provider: "iaai", state: "KY", city: "ASHLAND", zip: "41102" },
+  { provider: "iaai", state: "GA", city: "ATLANTA", zip: "30052" },
+  { provider: "iaai", state: "GA", city: "ATLANTA EAST", zip: "30680" },
+  { provider: "iaai", state: "GA", city: "ATLANTA NORTH", zip: "30101" },
+  { provider: "iaai", state: "GA", city: "ATLANTA SOUTH", zip: "30260" },
+  { provider: "iaai", state: "GA", city: "ATLANTA WEST", zip: "30153" },
+  { provider: "iaai", state: "TX", city: "AUSTIN", zip: "78616" },
+  { provider: "iaai", state: "TX", city: "AUSTIN NORTH", zip: "76527" },
+  { provider: "iaai", state: "NJ", city: "AVENEL NEW JERSEY", zip: "07001" },
+  { provider: "iaai", state: "MD", city: "BALTIMORE", zip: "21226" },
+  { provider: "iaai", state: "LA", city: "BATON ROUGE", zip: "70721" },
+  { provider: "iaai", state: "MT", city: "BILLINGS", zip: "59101" },
+  { provider: "iaai", state: "AL", city: "BIRMINGHAM", zip: "35022" },
+  { provider: "iaai", state: "ID", city: "BOISE", zip: "83642" },
+  { provider: "iaai", state: "MA", city: "BOSTON - SHIRLEY", zip: "01464" },
+  { provider: "iaai", state: "KY", city: "BOWLING GREEN", zip: "42101" },
+  { provider: "iaai", state: "PA", city: "BRIDGEPORT", zip: "19405" },
+  { provider: "iaai", state: "WV", city: "BUCKHANNON", zip: "26201" },
+  { provider: "iaai", state: "NY", city: "BUFFALO", zip: "14207" },
+  { provider: "iaai", state: "VT", city: "BURLINGTON", zip: "05452" },
+  { provider: "iaai", state: "WY", city: "CASPER", zip: "82601" },
+  { provider: "iaai", state: "NJ", city: "CENTRAL NEW JERSEY", zip: "07751" },
+  { provider: "iaai", state: "SC", city: "CHARLESTON", zip: "29470" },
+  { provider: "iaai", state: "NC", city: "CHARLOTTE", zip: "28206" },
+  { provider: "iaai", state: "TN", city: "CHATTANOOGA", zip: "37404" },
+  { provider: "iaai", state: "IL", city: "CHICAGO-NORTH", zip: "60118" },
+  { provider: "iaai", state: "IL", city: "CHICAGO-SOUTH", zip: "60428" },
+  { provider: "iaai", state: "IL", city: "CHICAGO-WEST", zip: "60505" },
+  { provider: "iaai", state: "OH", city: "CINCINNATI", zip: "45069" },
+  { provider: "iaai", state: "OH", city: "CINCINNATI-SOUTH", zip: "45102" },
+  { provider: "iaai", state: "FL", city: "CLEARWATER", zip: "33760" },
+  { provider: "iaai", state: "OH", city: "CLEVELAND", zip: "44053" },
+  { provider: "iaai", state: "CO", city: "COLORADO SPRINGS", zip: "80925" },
+  { provider: "iaai", state: "OH", city: "COLUMBUS", zip: "43123" },
+  { provider: "iaai", state: "NC", city: "CONCORD", zip: "28025" },
+  { provider: "iaai", state: "TX", city: "CORPUS CHRISTI", zip: "78405" },
+  { provider: "iaai", state: "VA", city: "CULPEPER", zip: "22701" },
+  { provider: "iaai", state: "TX", city: "DALLAS", zip: "75172" },
+  { provider: "iaai", state: "TX", city: "DALLAS/FT WORTH", zip: "75050" },
+  { provider: "iaai", state: "IA", city: "DAVENPORT", zip: "52802" },
+  { provider: "iaai", state: "OH", city: "DAYTON", zip: "45417" },
+  { provider: "iaai", state: "CO", city: "DENVER EAST", zip: "80022" },
+  { provider: "iaai", state: "IA", city: "DES MOINES", zip: "50069" },
+  { provider: "iaai", state: "MI", city: "DETROIT", zip: "48111" },
+  { provider: "iaai", state: "AL", city: "DOTHAN", zip: "36345" },
+  { provider: "iaai", state: "IL", city: "DREAM RIDES", zip: "60154" },
+  { provider: "iaai", state: "MD", city: "DUNDALK", zip: "21222" },
+  { provider: "iaai", state: "CA", city: "EAST BAY", zip: "94565" },
+  { provider: "iaai", state: "TX", city: "EL PASO", zip: "79938" },
+  { provider: "iaai", state: "IL", city: "ELECTRIC VEHICLE AUCTIONS", zip: "60154" },
+  { provider: "iaai", state: "MD", city: "ELKTON", zip: "21921" },
+  { provider: "iaai", state: "NJ", city: "ENGLISHTOWN", zip: "07726" },
+  { provider: "iaai", state: "PA", city: "ERIE", zip: "16416" },
+  { provider: "iaai", state: "OR", city: "EUGENE", zip: "97402" },
+  { provider: "iaai", state: "ND", city: "FARGO", zip: "58102" },
+  { provider: "iaai", state: "AR", city: "FAYETTEVILLE", zip: "72744" },
+  { provider: "iaai", state: "MI", city: "FLINT", zip: "48507" },
+  { provider: "iaai", state: "CA", city: "FONTANA", zip: "92335" },
+  { provider: "iaai", state: "FL", city: "FORT MYERS", zip: "33913" },
+  { provider: "iaai", state: "FL", city: "FORT PIERCE", zip: "34981" },
+  { provider: "iaai", state: "IN", city: "FORT WAYNE", zip: "46806" },
+  { provider: "iaai", state: "TX", city: "FORT WORTH NORTH", zip: "76247" },
+  { provider: "iaai", state: "CA", city: "FREMONT", zip: "94538" },
+  { provider: "iaai", state: "CA", city: "FRESNO", zip: "93705" },
+  { provider: "iaai", state: "IL", city: "GOV AUCTIONS MIDWEST", zip: "60154" },
+  { provider: "iaai", state: "IL", city: "GOV AUCTIONS NORTHEAST", zip: "60154" },
+  { provider: "iaai", state: "IL", city: "GOV AUCTIONS SOUTH", zip: "60154" },
+  { provider: "iaai", state: "IL", city: "GOV AUCTIONS WEST", zip: "60154" },
+  { provider: "iaai", state: "MI", city: "GRAND RAPIDS", zip: "49315" },
+  { provider: "iaai", state: "NC", city: "GREENSBORO", zip: "27253" },
+  { provider: "iaai", state: "SC", city: "GREENVILLE", zip: "29681" },
+  { provider: "iaai", state: "MS", city: "GRENADA", zip: "38901" },
+  { provider: "iaai", state: "MS", city: "GULF COAST", zip: "39562" },
+  { provider: "iaai", state: "CT", city: "HARTFORD", zip: "06088" },
+  { provider: "iaai", state: "CA", city: "HIGH DESERT", zip: "92345" },
+  { provider: "iaai", state: "NC", city: "HIGH POINT", zip: "27263" },
+  { provider: "iaai", state: "HI", city: "HONOLULU", zip: "96707" },
+  { provider: "iaai", state: "TX", city: "HOUSTON", zip: "77038" },
+  { provider: "iaai", state: "TX", city: "HOUSTON SOUTH", zip: "77583" },
+  { provider: "iaai", state: "TX", city: "HOUSTON-NORTH", zip: "77032" },
+  { provider: "iaai", state: "AL", city: "HUNTSVILLE", zip: "35613" },
+  { provider: "iaai", state: "IN", city: "INDIANAPOLIS", zip: "46217" },
+  { provider: "iaai", state: "IN", city: "INDIANAPOLIS SOUTH", zip: "47229" },
+  { provider: "iaai", state: "MS", city: "JACKSON", zip: "39272" },
+  { provider: "iaai", state: "FL", city: "JACKSONVILLE", zip: "32218" },
+  { provider: "iaai", state: "KS", city: "KANSAS CITY", zip: "66111" },
+  { provider: "iaai", state: "MO", city: "KANSAS CITY EAST", zip: "64076" },
+  { provider: "iaai", state: "TN", city: "KNOXVILLE", zip: "37914" },
+  { provider: "iaai", state: "LA", city: "LAFAYETTE", zip: "70583" },
+  { provider: "iaai", state: "GA", city: "LAKE CITY", zip: "30260" },
+  { provider: "iaai", state: "NV", city: "LAS VEGAS", zip: "89122" },
+  { provider: "iaai", state: "SC", city: "LEXINGTON", zip: "29073" },
+  { provider: "iaai", state: "IL", city: "LINCOLN", zip: "62656" },
+  { provider: "iaai", state: "AR", city: "LITTLE ROCK", zip: "72142" },
+  { provider: "iaai", state: "NY", city: "LONG ISLAND", zip: "11763" },
+  { provider: "iaai", state: "TX", city: "LONGVIEW", zip: "75605" },
+  { provider: "iaai", state: "CA", city: "LOS ANGELES", zip: "90248" },
+  { provider: "iaai", state: "CA", city: "LOS ANGELES SOUTH", zip: "90744" },
+  { provider: "iaai", state: "KY", city: "LOUISVILLE NORTH", zip: "40019" },
+  { provider: "iaai", state: "TX", city: "LUBBOCK", zip: "79415" },
+  { provider: "iaai", state: "GA", city: "MACON", zip: "31217" },
+  { provider: "iaai", state: "NH", city: "MANCHESTER", zip: "03079" },
+  { provider: "iaai", state: "TX", city: "MCALLEN", zip: "78537" },
+  { provider: "iaai", state: "TN", city: "MEMPHIS", zip: "38053" },
+  { provider: "iaai", state: "MD", city: "METRO DC", zip: "20613" },
+  { provider: "iaai", state: "FL", city: "MIAMI-NORTH", zip: "33332" },
+  { provider: "iaai", state: "WI", city: "MILWAUKEE", zip: "53089" },
+  { provider: "iaai", state: "MN", city: "MINNEAPOLIS SOUTH", zip: "55065" },
+  { provider: "iaai", state: "MN", city: "MINNEAPOLIS/ST. PAUL", zip: "55117" },
+  { provider: "iaai", state: "MT", city: "MISSOULA", zip: "59808" },
+  { provider: "iaai", state: "NY", city: "MONTICELLO", zip: "12701" },
+  { provider: "iaai", state: "TN", city: "NASHVILLE", zip: "37218" },
+  { provider: "iaai", state: "DE", city: "NEW CASTLE", zip: "19720" },
+  { provider: "iaai", state: "LA", city: "NEW ORLEANS EAST", zip: "70126" },
+  { provider: "iaai", state: "NY", city: "NEWBURGH", zip: "12575" },
+  { provider: "iaai", state: "CA", city: "NORTH HOLLYWOOD", zip: "91605" },
+  { provider: "iaai", state: "VA", city: "NORTHERN VIRGINIA", zip: "22406" },
+  { provider: "iaai", state: "OK", city: "OKLAHOMA CITY", zip: "73121" },
+  { provider: "iaai", state: "NE", city: "OMAHA", zip: "68059" },
+  { provider: "iaai", state: "NE", city: "OMAHA SOUTH", zip: "68366" },
+  { provider: "iaai", state: "ME", city: "ONLINE EXCLUSIVE", zip: "04927" },
+  { provider: "iaai", state: "FL", city: "ORLANDO", zip: "32824" },
+  { provider: "iaai", state: "FL", city: "ORLANDO-NORTH", zip: "32773" },
+  { provider: "iaai", state: "KY", city: "PADUCAH", zip: "42003" },
+  { provider: "iaai", state: "FL", city: "PENSACOLA", zip: "32583" },
+  { provider: "iaai", state: "TX", city: "PERMIAN BASIN", zip: "79764" },
+  { provider: "iaai", state: "PA", city: "PHILADELPHIA", zip: "19428" },
+  { provider: "iaai", state: "AZ", city: "PHOENIX", zip: "85041" },
+  { provider: "iaai", state: "PA", city: "PITTSBURGH", zip: "15001" },
+  { provider: "iaai", state: "PA", city: "PITTSBURGH-NORTH", zip: "15044" },
+  { provider: "iaai", state: "NJ", city: "PORT MURRAY", zip: "07865" },
+  { provider: "iaai", state: "WI", city: "PORTAGE", zip: "53901" },
+  { provider: "iaai", state: "OR", city: "PORTLAND", zip: "97230" },
+  { provider: "iaai", state: "ME", city: "PORTLAND - GORHAM", zip: "04038" },
+  { provider: "iaai", state: "OR", city: "PORTLAND SOUTH", zip: "97071" },
+  { provider: "iaai", state: "OR", city: "PORTLAND WEST", zip: "97217" },
+  { provider: "iaai", state: "RI", city: "PROVIDENCE", zip: "02915" },
+  { provider: "iaai", state: "UT", city: "PROVO", zip: "84648" },
+  { provider: "iaai", state: "VA", city: "PULASKI", zip: "24301" },
+  { provider: "iaai", state: "NC", city: "RALEIGH", zip: "27520" },
+  { provider: "iaai", state: "IL", city: "REC RIDES - ONLINE-EXCLUSIVE", zip: "60154" },
+  { provider: "iaai", state: "NV", city: "RENO", zip: "89437" },
+  { provider: "iaai", state: "VA", city: "RICHMOND", zip: "23005" },
+  { provider: "iaai", state: "CA", city: "RIVERSIDE", zip: "92509" },
+  { provider: "iaai", state: "VA", city: "ROANOKE", zip: "24122" },
+  { provider: "iaai", state: "NY", city: "ROCHESTER", zip: "14416" },
+  { provider: "iaai", state: "CA", city: "SACRAMENTO", zip: "95742" },
+  { provider: "iaai", state: "CA", city: "SACRAMENTO WEST", zip: "95620" },
+  { provider: "iaai", state: "UT", city: "SALT LAKE CITY", zip: "84401" },
+  { provider: "iaai", state: "TX", city: "SAN ANTONIO-SOUTH", zip: "78224" },
+  { provider: "iaai", state: "CA", city: "SAN DIEGO", zip: "92154" },
+  { provider: "iaai", state: "CA", city: "SANTA CLARITA", zip: "91387" },
+  { provider: "iaai", state: "GA", city: "SAVANNAH", zip: "31326" },
+  { provider: "iaai", state: "NJ", city: "SAYREVILLE", zip: "08872" },
+  { provider: "iaai", state: "PA", city: "SCRANTON", zip: "18640" },
+  { provider: "iaai", state: "WA", city: "SEATTLE", zip: "98374" },
+  { provider: "iaai", state: "WV", city: "SHADY SPRING", zip: "25918" },
+  { provider: "iaai", state: "LA", city: "SHREVEPORT", zip: "71033" },
+  { provider: "iaai", state: "SD", city: "SIOUX FALLS", zip: "57039" },
+  { provider: "iaai", state: "IN", city: "SOUTH BEND", zip: "46619" },
+  { provider: "iaai", state: "NJ", city: "SOUTHERN NEW JERSEY", zip: "08012" },
+  { provider: "iaai", state: "IL", city: "SPECIALTY DIVISION", zip: "60173" },
+  { provider: "iaai", state: "WA", city: "SPOKANE", zip: "99216" },
+  { provider: "iaai", state: "MO", city: "SPRINGFIELD", zip: "65803" },
+  { provider: "iaai", state: "MN", city: "ST. CLOUD", zip: "56367" },
+  { provider: "iaai", state: "IL", city: "ST. LOUIS", zip: "62232" },
+  { provider: "iaai", state: "NY", city: "STATEN ISLAND", zip: "10314" },
+  { provider: "iaai", state: "CA", city: "STOCKTON", zip: "95205" },
+  { provider: "iaai", state: "VA", city: "SUFFOLK", zip: "23434" },
+  { provider: "iaai", state: "NY", city: "SYRACUSE", zip: "13039" },
+  { provider: "iaai", state: "FL", city: "TAMPA", zip: "34221" },
+  { provider: "iaai", state: "FL", city: "TAMPA NORTH", zip: "34667" },
+  { provider: "iaai", state: "MA", city: "TAUNTON", zip: "02718" },
+  { provider: "iaai", state: "MA", city: "TEMPLETON", zip: "01468" },
+  { provider: "iaai", state: "VA", city: "TIDEWATER", zip: "23693" },
+  { provider: "iaai", state: "GA", city: "TIFTON", zip: "31794" },
+  { provider: "iaai", state: "AZ", city: "TUCSON", zip: "85714" },
+  { provider: "iaai", state: "OK", city: "TULSA", zip: "74107" },
+  { provider: "iaai", state: "ME", city: "VIRTUAL LANE A", zip: "04927" },
+  { provider: "iaai", state: "ME", city: "VIRTUAL LANE B", zip: "04927" },
+  { provider: "iaai", state: "ME", city: "VIRTUAL LANE C", zip: "04927" },
+  { provider: "iaai", state: "FL", city: "WEST PALM BEACH", zip: "33478" },
+  { provider: "iaai", state: "KS", city: "WICHITA", zip: "67219" },
+  { provider: "iaai", state: "NC", city: "WILMINGTON", zip: "28429" },
+  { provider: "iaai", state: "PA", city: "YORK SPRINGS", zip: "17372" },
+
+  // ===== END IAAI =====
 ];
 
 // NOTE: Nie używamy \p{...} (Unicode Property Escapes), bo w części środowisk (np. pewne bundlery/wykonania)
@@ -457,304 +660,344 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
   return (usd * usdPln) / eurPln;
 }
 
-// ================= DEV TESTS =================
-// W appkach bez test-runnera: robimy mini-testy tylko w DEV, żeby łapać regresje.
-function runDevTests() {
-  // normalize
-  const a = normalize("Łódź");
-  if (a !== "LODZ") console.warn("[TEST] normalize(Łódź) expected LODZ, got:", a);
-
-  // searchYards
-  const s1 = searchYards("birmingham", "copart", 10);
-  if (!s1.some((y) => y.zip === "35023")) console.warn("[TEST] searchYards(birmingham) should include 35023");
-
-  const s2 = searchYards("35023", "copart", 10);
-  if (!s2.some((y) => y.city === "BIRMINGHAM")) console.warn("[TEST] searchYards(35023) should include BIRMINGHAM");
-}
-
-export default function ImportCalculatorPL() {
-  const [vehiclePrice, setVehiclePrice] = useState("25000");
+// ================= COMPONENT =================
+export default function Page() {
+  const [buyerType, setBuyerType] = useState<BuyerType>("private");
+  const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
+  const [exciseGrossPln, setExciseGrossPln] = useState("0");
   const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
   const [vehicleSize, setVehicleSize] = useState<VehicleSize>("sedan");
-  const [buyerType, setBuyerType] = useState<BuyerType>("private");
 
   const [yardQuery, setYardQuery] = useState("");
   const [selectedYard, setSelectedYard] = useState<Yard | null>(null);
-  const [isYardOpen, setIsYardOpen] = useState(false);
+  const [zip, setZip] = useState("");
 
-  const [zip, setZip] = useState("07001");
-  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
+  const [vehiclePrice, setVehiclePrice] = useState("10000");
   const [extraCosts, setExtraCosts] = useState("0");
+  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
 
-  const [usdPln, setUsdPln] = useState(0);
-  const [eurPln, setEurPln] = useState(0);
+  const [usdPln, setUsdPln] = useState<number | null>(null);
+  const [eurPln, setEurPln] = useState<number | null>(null);
 
-  const [yardCoords, setYardCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [nearestPortKey, setNearestPortKey] = useState<PortKey>("NJ");
+  const [zipCoord, setZipCoord] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") runDevTests();
-
-    async function loadRates() {
-      const usd = await fetchNBPRate("USD");
-      const eur = await fetchNBPRate("EUR");
-      if (usd) setUsdPln(usd);
-      if (eur) setEurPln(eur);
-    }
-    loadRates();
+    (async () => {
+      const [u, e] = await Promise.all([fetchNBPRate("USD"), fetchNBPRate("EUR")]);
+      setUsdPln(u);
+      setEurPln(e);
+    })();
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const z = zip.trim();
+      if (z.length < 3) {
+        setZipCoord(null);
+        return;
+      }
+      const c = await geocodeZipUS(z);
+      if (alive) setZipCoord(c);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [zip]);
+
+  const suggestions = useMemo(() => searchYards(yardQuery, auctionHouse, 12), [yardQuery, auctionHouse]);
 
   useEffect(() => {
     setSelectedYard(null);
     setYardQuery("");
-    setIsYardOpen(false);
+    setZip("");
   }, [auctionHouse]);
 
-  useEffect(() => {
-    async function run() {
-      const geo = await geocodeZipUS(zip);
-      if (!geo) return;
-      setYardCoords(geo);
-
-      let best: number | null = null;
-      let bestKey: PortKey = "NJ";
-
-      (Object.entries(PORTS) as Array<[PortKey, (typeof PORTS)[PortKey]]>).forEach(([key, port]) => {
-        const miles = haversineMiles(geo.lat, geo.lon, port.lat, port.lon);
-        if (best === null || miles < best) {
-          best = miles;
-          bestKey = key;
-        }
-      });
-
-      setNearestPortKey(bestKey);
-    }
-    run();
-  }, [zip]);
-
-  const yardSuggestions = useMemo(() => {
-    if (!yardQuery.trim()) return [] as Yard[];
-    return searchYards(yardQuery, auctionHouse, 14);
-  }, [yardQuery, auctionHouse]);
-
   const calc = useMemo(() => {
-    const v = parseNum(vehiclePrice);
-    const extra = parseNum(extraCosts);
+    const priceUSD = parseNum(vehiclePrice);
+    const extraUSD = parseNum(extraCosts);
 
-    const port = PORTS[nearestPortKey];
-    const sizeMultiplier = SIZE_MULTIPLIERS[vehicleSize];
+    let bestPort: PortKey = "NJ";
+    let bestMiles = Number.POSITIVE_INFINITY;
 
-    let miles = 0;
-    if (yardCoords) {
-      miles = haversineMiles(yardCoords.lat, yardCoords.lon, port.lat, port.lon);
+    if (zipCoord) {
+      for (const k of Object.keys(PORTS) as PortKey[]) {
+        const p = PORTS[k];
+        const miles = haversineMiles(zipCoord.lat, zipCoord.lon, p.lat, p.lon);
+        if (miles < bestMiles) {
+          bestMiles = miles;
+          bestPort = k;
+        }
+      }
     }
 
-    const auctionFee = calcAuctionFee(v);
+    const port = PORTS[bestPort];
+    const sizeOceanMult = SIZE_MULTIPLIERS[vehicleSize];
+    const sizeInlandMult = INLAND_SIZE_MULTIPLIERS[vehicleSize];
 
-    const inlandBase = Math.max(miles * INLAND_RATE, INLAND_MIN);
-    const inland = inlandBase * INLAND_SIZE_MULTIPLIERS[vehicleSize];
-    const ocean = port.ocean * sizeMultiplier;
+    const rawInland = zipCoord ? Math.max(bestMiles * INLAND_RATE, INLAND_MIN) : INLAND_MIN;
+    const inland = rawInland * sizeInlandMult;
+    const ocean = port.ocean * sizeOceanMult;
+    const auctionFee = calcAuctionFee(priceUSD);
+    const insurance = insuranceEnabled ? Math.max(priceUSD * INSURANCE_RATE, INSURANCE_MIN) : 0;
 
-    const insurance = insuranceEnabled ? Math.max(v * INSURANCE_RATE, INSURANCE_MIN) : 0;
-    const usaTotalUSD = v + auctionFee + inland + ocean + insurance + extra;
+    const usaTotalUSD = priceUSD + auctionFee + inland + ocean + insurance + extraUSD;
+
+    const usdPlnSafe = usdPln ?? 0;
+    const eurPlnSafe = eurPln ?? 0;
+
+    const isCompanyLike = buyerType === "company" || priceUSD < 3000;
 
     let dutyEUR = 0;
     let vatEUR = 0;
 
-    const effectiveBuyerType: BuyerType = buyerType === "private" && v < 3000 ? "company" : buyerType;
+    if (isCompanyLike) {
+      const transportUSD = inland + ocean;
+      const customsValueUSD = priceUSD + transportUSD;
+      const dutyBaseUSD = customsValueUSD + insurance;
 
-    if (effectiveBuyerType === "private") {
-      const baseEUR = usdToEur(v * 0.6, usdPln, eurPln);
-      const dutyRaw = baseEUR * 0.1;
-      const vatRaw = (baseEUR + dutyRaw) * 0.21;
-      dutyEUR = dutyRaw;
-      vatEUR = vatRaw;
+      const dutyBaseEUR = usdToEur(dutyBaseUSD, usdPlnSafe, eurPlnSafe);
+      dutyEUR = Math.max(dutyBaseEUR * 0.1, 300);
+
+      const vatBaseEUR = usdToEur(customsValueUSD, usdPlnSafe, eurPlnSafe) + dutyEUR;
+      vatEUR = Math.max(vatBaseEUR * 0.21, 300);
     } else {
-      const customsValueEUR = usdToEur(v + inland + ocean + insurance, usdPln, eurPln);
-      const dutyRaw = customsValueEUR * 0.1;
-      const vatBaseEUR = usdToEur(v + inland + ocean, usdPln, eurPln);
-      const vatRaw = (vatBaseEUR + dutyRaw) * 0.21;
-      dutyEUR = dutyRaw;
-      vatEUR = vatRaw;
+      const baseEUR = usdToEur(priceUSD * 0.6, usdPlnSafe, eurPlnSafe);
+      dutyEUR = Math.max(baseEUR * 0.1, 300);
+      vatEUR = Math.max((baseEUR + dutyEUR) * 0.21, 300);
     }
 
-    dutyEUR = Math.max(dutyEUR, 300);
-
     const rotterdamTotalEUR = dutyEUR + vatEUR + CUSTOMS_AGENCY_EUR;
-    const usaPLN = usaTotalUSD * usdPln;
-    const rotterdamPLN = rotterdamTotalEUR * eurPln;
-    const totalPLN = usaPLN + rotterdamPLN + POLAND_FIXED_PLN + COMPANY_COMMISSION_PLN;
+
+    const usaTotalPLN = usdPlnSafe > 0 ? usaTotalUSD * usdPlnSafe : 0;
+    const rotterdamTotalPLN = eurPlnSafe > 0 ? rotterdamTotalEUR * eurPlnSafe : 0;
+
+    const totalPLN = usaTotalPLN + rotterdamTotalPLN + POLAND_FIXED_PLN + COMPANY_COMMISSION_PLN;
+
+    const exciseGross = parseNum(exciseGrossPln);
+    // Zakładamy, że wpisywana "wartość pojazdu" jest BRUTTO (z VAT 23%).
+    // VAT = brutto - (brutto/1.23). Akcyza liczona od wartości netto.
+    const exciseNet = exciseGross > 0 ? exciseGross / 1.23 : 0;
+    const exciseVatPl = exciseGross > 0 ? exciseGross - exciseNet : 0;
+    const exciseAmount = Math.max(0, exciseNet * exciseRate);
 
     return {
+      portName: port.name,
       auctionFee,
       inland,
       ocean,
       insurance,
+      usaTotalUSD,
       dutyEUR,
       vatEUR,
-      usaTotalUSD,
       rotterdamTotalEUR,
       totalPLN,
-      portName: port.name,
+      exciseRate,
+      exciseGross,
+      exciseVatPl,
+      exciseAmount,
     };
-  }, [
-    vehiclePrice,
-    vehicleSize,
-    buyerType,
-    yardCoords,
-    nearestPortKey,
-    usdPln,
-    eurPln,
-    insuranceEnabled,
-    extraCosts,
-  ]);
+  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln]);
 
   return (
-    <div className="min-h-screen p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Kalkulator Importu USA → Rotterdam → Polska</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl p-8 space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
+              <div className="text-sm text-gray-500 mt-1">
+                Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN
+              </div>
+            </div>
+          </div>
 
-      <div className="space-y-4">
-        <div>
-          <label className="font-semibold">Rodzaj klienta</label>
-          <select
-            className="border p-2 w-full"
-            value={buyerType}
-            onChange={(e) => setBuyerType(e.target.value as BuyerType)}
-          >
-            <option value="private">Osoba prywatna</option>
-            <option value="company">Firma</option>
-          </select>
-        </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Rodzaj klienta</label>
+              <select
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={buyerType}
+                onChange={(e) => setBuyerType(e.target.value as BuyerType)}
+              >
+                <option value="private">Osoba prywatna</option>
+                <option value="company">Firma</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Dom aukcyjny</label>
+              <select
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={auctionHouse}
+                onChange={(e) => setAuctionHouse(e.target.value as AuctionHouse)}
+              >
+                <option value="copart">Copart</option>
+                <option value="iaai">IAAI</option>
+              </select>
+            </div>
+          </div>
 
-        <div>
-          <label className="font-semibold">Dom aukcyjny</label>
-          <select
-            className="border p-2 w-full"
-            value={auctionHouse}
-            onChange={(e) => setAuctionHouse(e.target.value as AuctionHouse)}
-          >
-            <option value="copart">Copart</option>
-            <option value="iaai">IAAI</option>
-          </select>
-          <div className="text-xs text-gray-500 mt-1">Wyszukiwarka placów poniżej pokazuje tylko place z wybranego domu.</div>
-        </div>
+          <div>
+            <label className="text-sm font-semibold text-gray-600">Wielkość auta</label>
+            <select
+              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+              value={vehicleSize}
+              onChange={(e) => setVehicleSize(e.target.value as VehicleSize)}
+            >
+              <option value="sedan">Sedan</option>
+              <option value="suv">SUV</option>
+              <option value="bigsuv">Big SUV</option>
+              <option value="oversize">Oversize</option>
+            </select>
+          </div>
 
-        <div>
-          <label className="font-semibold">Wielkość auta</label>
-          <select
-            className="border p-2 w-full"
-            value={vehicleSize}
-            onChange={(e) => setVehicleSize(e.target.value as VehicleSize)}
-          >
-            <option value="sedan">Sedan</option>
-            <option value="suv">SUV</option>
-            <option value="bigsuv">Big SUV</option>
-            <option value="oversize">Oversize</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="font-semibold">Plac (USA) – wyszukaj po mieście/stanie/ZIP</label>
           <div className="relative">
+            <label className="text-sm font-semibold text-gray-600">Plac (USA)</label>
             <input
-              className="border p-2 w-full"
+              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
               value={yardQuery}
               onChange={(e) => {
                 setYardQuery(e.target.value);
                 setSelectedYard(null);
               }}
-              placeholder={auctionHouse === "copart" ? "np. AL Birmingham, 35023, Los Angeles..." : "np. NJ ..."}
-              onFocus={() => setIsYardOpen(true)}
-              onBlur={() => setTimeout(() => setIsYardOpen(false), 150)}
+              placeholder="Wpisz miasto / stan / ZIP"
             />
 
-            {isYardOpen && yardSuggestions.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded border bg-white shadow max-h-72 overflow-auto">
-                {yardSuggestions.map((y, idx) => (
+            {yardQuery.trim().length > 0 && suggestions.length > 0 && (
+              <div className="absolute z-20 mt-2 w-full bg-white border rounded-xl shadow-lg overflow-hidden">
+                {suggestions.map((y) => (
                   <button
-                    key={`${y.provider}-${y.zip}-${idx}`}
+                    key={y.provider + y.zip + y.state + y.city}
                     type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100"
-                    onMouseDown={(e) => e.preventDefault()}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between"
                     onClick={() => {
                       setSelectedYard(y);
                       setYardQuery(yardDisplay(y));
                       setZip(y.zip);
-                      setIsYardOpen(false);
                     }}
                   >
-                    <div className="text-sm">{yardDisplay(y)}</div>
-                    <div className="text-xs text-gray-500">ZIP: {y.zip}</div>
+                    <span className="text-sm font-medium">{yardDisplay(y)}</span>
+                    <span className="text-xs text-gray-500">{y.zip}</span>
                   </button>
                 ))}
               </div>
             )}
+
+            {selectedYard && (
+              <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
+            )}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
-            Jeśli wybierzesz plac z listy, ZIP ustawi się automatycznie. Możesz też wpisać ZIP ręcznie niżej.
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm font-semibold text-gray-600">ZIP</label>
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Cena zakupu (USD)</label>
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={vehiclePrice}
+                onChange={(e) => setVehiclePrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input type="checkbox" checked={insuranceEnabled} onChange={(e) => setInsuranceEnabled(e.target.checked)} />
+            <span className="text-sm">Ubezpieczenie transportu</span>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
+            <input
+              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+              value={extraCosts}
+              onChange={(e) => setExtraCosts(e.target.value)}
+            />
           </div>
         </div>
 
-        <div>
-          <label className="font-semibold">ZIP placu (USA)</label>
-          <input className="border p-2 w-full" value={zip} onChange={(e) => setZip(e.target.value)} />
-        </div>
-
-        <div>
-          <label className="font-semibold">Cena zakupu auta (USD)</label>
-          <input
-            className="border p-2 w-full"
-            value={vehiclePrice}
-            onChange={(e) => setVehiclePrice(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={insuranceEnabled}
-            onChange={(e) => setInsuranceEnabled(e.target.checked)}
-          />
-          <label>Ubezpieczenie transportu (opcjonalne)</label>
-        </div>
-
-        <div>
-          <label className="font-semibold">Dodatkowe wydatki (USD)</label>
-          <input className="border p-2 w-full" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} />
-        </div>
-
-        {selectedYard && (
-          <div className="text-sm rounded border p-3 bg-gray-50">
-            Wybrany plac: <b>{yardDisplay(selectedYard)}</b> (ZIP {selectedYard.zip})
+        <div className="bg-black text-white rounded-2xl shadow-xl p-8 space-y-6 sticky top-10 h-fit">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-gray-400">Najbliższy port</div>
+            <div className="text-lg font-semibold">{calc.portName}</div>
           </div>
-        )}
-      </div>
 
-      <div className="mt-10 space-y-2 border-t pt-6">
-        <div>
-          Najbliższy port: <b>{calc.portName}</b>
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">USA (USD)</div>
+            <div className="space-y-1 text-sm">
+              <div>Auto: {n2(parseNum(vehiclePrice))}</div>
+              <div>Aukcja: {n2(calc.auctionFee)}</div>
+              <div>Lądowy: {n2(calc.inland)}</div>
+              <div>Morski: {n2(calc.ocean)}</div>
+              {insuranceEnabled && <div>Ubezpieczenie: {n2(calc.insurance)}</div>}
+              <div>Dodatkowe: {n2(parseNum(extraCosts))}</div>
+              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">Rotterdam (EUR)</div>
+            <div className="space-y-1 text-sm">
+              <div>Cło: {n2(calc.dutyEUR)}</div>
+              <div>VAT: {n2(calc.vatEUR)}</div>
+              <div>Agencja: {n2(CUSTOMS_AGENCY_EUR)}</div>
+              <div className="font-semibold">Razem: {n2(calc.rotterdamTotalEUR)}</div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">Polska (PLN)</div>
+            <div className="space-y-1 text-sm">
+              <div>Transport: {n2(POLAND_FIXED_PLN)}</div>
+              <div>Prowizja: {n2(COMPANY_COMMISSION_PLN)}</div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-6">
+            <div className="text-sm text-gray-400">Łączny koszt</div>
+            <div className="text-3xl font-bold tracking-tight">{n2(calc.totalPLN)} PLN</div>
+          </div>
+
+          {/* AKCYZA */}
+          <div className="border-t border-gray-700 pt-6 space-y-3">
+            <div className="text-xs uppercase text-gray-400">Akcyza (PL)</div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm"
+                value={String(exciseRate)}
+                onChange={(e) => setExciseRate(Number(e.target.value) as ExciseRate)}
+              >
+                <option value={0.015}>1,5%</option>
+                <option value={0.031}>3,1%</option>
+                <option value={0.093}>9,3%</option>
+                <option value={0.186}>18,6%</option>
+              </select>
+
+              <input
+                className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm"
+                placeholder="Wartość (PLN brutto)"
+                value={exciseGrossPln}
+                onChange={(e) => setExciseGrossPln(e.target.value)}
+              />
+
+              <div className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm flex items-center justify-between">
+                <span className="text-gray-400">Akcyza</span>
+                <span className="font-semibold">{n2(calc.exciseAmount)} PLN</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-400">
+              VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN
+            </div>
+          </div>
         </div>
-
-        <h2 className="font-bold mt-6">USA (USD)</h2>
-        <div>Kupno auta: {n2(parseNum(vehiclePrice))} USD</div>
-        <div>Prowizja aukcji: {n2(calc.auctionFee)} USD</div>
-        <div>Transport lądowy: {n2(calc.inland)} USD</div>
-        <div>Transport morski: {n2(calc.ocean)} USD</div>
-        {insuranceEnabled && <div>Ubezpieczenie: {n2(calc.insurance)} USD</div>}
-        {parseNum(extraCosts) > 0 && <div>Dodatkowe wydatki: {n2(parseNum(extraCosts))} USD</div>}
-        <div className="font-semibold">Razem USA: {n2(calc.usaTotalUSD)} USD</div>
-
-        <h2 className="font-bold mt-6">Rotterdam (EUR)</h2>
-        <div>Cło: {n2(calc.dutyEUR)} EUR</div>
-        <div>VAT: {n2(calc.vatEUR)} EUR</div>
-        <div>Agencja celna: {n2(CUSTOMS_AGENCY_EUR)} EUR</div>
-        <div className="font-semibold">Razem Rotterdam: {n2(calc.rotterdamTotalEUR)} EUR</div>
-
-        <h2 className="font-bold mt-6">Polska (PLN)</h2>
-        <div>Koszty z Rotterdamu: {n2(POLAND_FIXED_PLN)} PLN</div>
-        <div>Prowizja firmy: {n2(COMPANY_COMMISSION_PLN)} PLN</div>
-
-        <div className="text-2xl font-bold mt-6">Całość: {n2(calc.totalPLN)} PLN</div>
       </div>
     </div>
   );
