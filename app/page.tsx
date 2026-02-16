@@ -920,6 +920,39 @@ export default function Page() {
               onChange={(e) => setExtraCosts(e.target.value)}
             />
           </div>
+
+          {/* AKCYZA */}
+          <div className="pt-2">
+            <div className="text-sm font-semibold text-gray-700">Akcyza (PL)</div>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+              <select
+                className="rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={String(exciseRate)}
+                onChange={(e) => setExciseRate(Number(e.target.value) as ExciseRate)}
+              >
+                <option value={0.015}>1,5%</option>
+                <option value={0.031}>3,1%</option>
+                <option value={0.093}>9,3%</option>
+                <option value={0.186}>18,6%</option>
+              </select>
+
+              <input
+                className="rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                placeholder="Wartość (PLN brutto)"
+                value={exciseGrossPln}
+                onChange={(e) => setExciseGrossPln(e.target.value)}
+              />
+
+              <div className="rounded-xl border p-2 bg-slate-50 flex items-center justify-between">
+                <span className="text-sm text-gray-600">Akcyza</span>
+                <span className="text-sm font-semibold">{n2(calc.exciseAmount)} PLN</span>
+              </div>
+            </div>
+
+            <div className="mt-2 text-xs text-gray-500">
+              VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN
+            </div>
+          </div>
         </div>
 
         <div className="bg-black text-white rounded-2xl shadow-xl p-8 space-y-6 sticky top-10 h-fit">
@@ -963,41 +996,11 @@ export default function Page() {
             <div className="text-sm text-gray-400">Łączny koszt</div>
             <div className="text-3xl font-bold tracking-tight">{n2(calc.totalPLN)} PLN</div>
           </div>
-
-          {/* AKCYZA */}
-          <div className="border-t border-gray-700 pt-6 space-y-3">
-            <div className="text-xs uppercase text-gray-400">Akcyza (PL)</div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm"
-                value={String(exciseRate)}
-                onChange={(e) => setExciseRate(Number(e.target.value) as ExciseRate)}
-              >
-                <option value={0.015}>1,5%</option>
-                <option value={0.031}>3,1%</option>
-                <option value={0.093}>9,3%</option>
-                <option value={0.186}>18,6%</option>
-              </select>
-
-              <input
-                className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm"
-                placeholder="Wartość (PLN brutto)"
-                value={exciseGrossPln}
-                onChange={(e) => setExciseGrossPln(e.target.value)}
-              />
-
-              <div className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-sm flex items-center justify-between">
-                <span className="text-gray-400">Akcyza</span>
-                <span className="font-semibold">{n2(calc.exciseAmount)} PLN</span>
-              </div>
-            </div>
-
-            <div className="text-xs text-gray-400">
-              VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN
-            </div>
-          </div>
         </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto mt-6 text-center text-[11px] text-gray-500">
+        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od rzeczywistych kosztów.
       </div>
     </div>
   );
