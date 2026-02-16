@@ -662,7 +662,13 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 
 // ================= COMPONENT =================
 export default function Page() {
+  // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
+  // Zmień na własne.
+  const APP_PASSWORD = "USAImportAuto";
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
+  const [authOk, setAuthOk] = useState(false);
+  const [authInput, setAuthInput] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
   const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
   const [exciseGrossPln, setExciseGrossPln] = useState("0");
   const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
@@ -682,6 +688,14 @@ export default function Page() {
   const [zipCoord, setZipCoord] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
+    // zapamiętanie hasła tylko na czas sesji (zamykanie karty czyści)
+    try {
+      const saved = sessionStorage.getItem("bobrauto_auth") === "1";
+      if (saved) setAuthOk(true);
+    } catch {
+      // ignore
+    }
+
     (async () => {
       const [u, e] = await Promise.all([fetchNBPRate("USD"), fetchNBPRate("EUR")]);
       setUsdPln(u);
@@ -799,11 +813,88 @@ export default function Page() {
     };
   }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln]);
 
+  const handleLogin = () => {
+    const ok = authInput === APP_PASSWORD;
+    if (!ok) {
+      setAuthError("Nieprawidłowe hasło");
+      setAuthOk(false);
+      return;
+    }
+    setAuthError(null);
+    setAuthOk(true);
+    try {
+      sessionStorage.setItem("bobrauto_auth", "1");
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthOk(false);
+    setAuthInput("");
+    setAuthError(null);
+    try {
+      sessionStorage.removeItem("bobrauto_auth");
+    } catch {
+      // ignore
+    }
+  };
+
+  if (!authOk) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-2xl font-bold tracking-tight">Dostęp chroniony</div>
+          <div className="text-sm text-gray-500 mt-1">Wpisz hasło, aby uruchomić kalkulator.</div>
+
+          <div className="mt-6 space-y-2">
+            <label className="text-sm font-semibold text-gray-600">Hasło</label>
+            <input
+              className="w-full rounded-xl border p-3 focus:ring-2 focus:ring-black"
+              type="password"
+              value={authInput}
+              onChange={(e) => {
+                setAuthInput(e.target.value);
+                setAuthError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleLogin();
+              }}
+              placeholder="••••••••"
+            />
+            {authError && <div className="text-sm text-red-600">{authError}</div>}
+          </div>
+
+          <button
+            type="button"
+            className="mt-5 w-full rounded-xl bg-black text-white py-3 font-semibold hover:opacity-90"
+            onClick={handleLogin}
+          >
+            Wejdź
+          </button>
+
+          <div className="mt-4 text-[11px] text-gray-500">
+            Uwaga: to jest proste zabezpieczenie (hasło może zostać podejrzane w kodzie strony). Jeśli chcesz "twardą"
+            ochronę, trzeba zrobić to po stronie serwera.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl p-8 space-y-6">
           <div className="flex items-start justify-between gap-4">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="ml-auto text-xs rounded-lg border px-3 py-2 hover:bg-slate-50"
+              title="Wyloguj"
+            >
+              Wyloguj
+            </button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
               <div className="text-sm text-gray-500 mt-1">
