@@ -18,6 +18,14 @@ const SIZE_MULTIPLIERS: Record<string, number> = {
   oversize: 2,
 };
 
+// Mnożnik transportu lądowego (różny od morskiego)
+const INLAND_SIZE_MULTIPLIERS: Record<string, number> = {
+  sedan: 1,
+  suv: 1.2,
+  bigsuv: 1.5,
+  oversize: 1.8,
+};
+
 // ================= STAŁE KOSZTOWE =================
 // Prowizja domu aukcyjnego (USD):
 // - do 1000 USD: 580 USD (min. 580)
@@ -68,9 +76,9 @@ function calcAuctionRate(priceUSD: number) {
 }
 
 function calcAuctionFee(priceUSD: number) {
-  if (priceUSD <= 1000) return AUCTION_MIN_FEE;
+  if (priceUSD <= 1000) return AUCTION_MIN_FEE + 120;
   const rate = calcAuctionRate(priceUSD);
-  return Math.max(priceUSD * rate, AUCTION_MIN_FEE);
+  return Math.max(priceUSD * rate, AUCTION_MIN_FEE) + 120;
 }
 const INLAND_RATE = 2;
 const INLAND_MIN = 300;
@@ -78,7 +86,7 @@ const INLAND_MIN = 300;
 const INSURANCE_RATE = 0.02;
 const INSURANCE_MIN = 200;
 
-const CUSTOMS_AGENCY_EUR = 600;
+const CUSTOMS_AGENCY_EUR = 500;
 const POLAND_FIXED_PLN = 2800;
 const COMPANY_COMMISSION_PLN = 3300;
 
@@ -201,7 +209,8 @@ export default function ImportCalculatorPL() {
     // Prowizja wg progów (nie zależy od Copart/IAAI w tej wersji)
     const auctionFee = calcAuctionFee(v);
 
-    const inland = Math.max(miles * INLAND_RATE, INLAND_MIN);
+    const inlandBase = Math.max(miles * INLAND_RATE, INLAND_MIN);
+    const inland = inlandBase * INLAND_SIZE_MULTIPLIERS[vehicleSize];
     const ocean = port.ocean * sizeMultiplier;
 
     const insurance = insuranceEnabled ? Math.max(v * INSURANCE_RATE, INSURANCE_MIN) : 0;
