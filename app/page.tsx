@@ -1092,10 +1092,10 @@ export default function Page() {
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">USA (USD)</div>
             <div className="space-y-1 text-sm">
-              <div>Auto: {n2(parseNum(vehiclePrice))}</div>
-              <div>Aukcja: {n2(calc.auctionFee)}</div>
-              <div>Lądowy: {n2(calc.inland)}</div>
-              <div>Morski: {n2(calc.ocean)}</div>
+              <div>Cena zakupu: {n2(parseNum(vehiclePrice))}</div>
+              <div>Prowizja domu aukcyjnego: {n2(calc.auctionFee)}</div>
+              <div>Transport Lądowy: {n2(calc.inland)}</div>
+              <div>Transport Morski: {n2(calc.ocean)}</div>
               {insuranceEnabled && <div>Ubezpieczenie: {n2(calc.insurance)}</div>}
               <div>Dodatkowe: {n2(parseNum(extraCosts))}</div>
               <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
@@ -1107,7 +1107,7 @@ export default function Page() {
             <div className="space-y-1 text-sm">
               <div>Cło: {n2(calc.dutyEUR)}</div>
               <div>VAT: {n2(calc.vatEUR)}</div>
-              <div>Agencja: {n2(CUSTOMS_AGENCY_EUR)}</div>
+              <div>Agencja Celna: {n2(CUSTOMS_AGENCY_EUR)}</div>
               <div className="font-semibold">Razem: {n2(calc.rotterdamTotalEUR)}</div>
             </div>
           </div>
@@ -1115,8 +1115,8 @@ export default function Page() {
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">Polska (PLN)</div>
             <div className="space-y-1 text-sm">
-              <div>Transport: {n2(POLAND_FIXED_PLN)}</div>
-              <div>Prowizja: {n2(COMPANY_COMMISSION_PLN)}</div>
+              <div>Transport z Rotterdamu: {n2(POLAND_FIXED_PLN)}</div>
+              <div>Prowizja firmy: {n2(COMPANY_COMMISSION_PLN)}</div>
             </div>
           </div>
 
