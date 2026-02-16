@@ -874,7 +874,7 @@ export default function Page() {
           </button>
 
           <div className="mt-4 text-[11px] text-gray-500">
-            Uwaga: to jest proste zabezpieczenie (hasło może zostać podejrzane w kodzie strony). Jeśli chcesz "twardą"
+            Uwaga: to jest proste zabezpieczenie (hasło może zostać podejrzane w kodzie strony). Jeśli chcesz &quot;twardą&quot;
             ochronę, trzeba zrobić to po stronie serwera.
           </div>
         </div>
