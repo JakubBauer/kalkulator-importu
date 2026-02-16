@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ================= PORTY USA =================
 const PORTS = {
@@ -678,6 +678,9 @@ export default function Page() {
   const [selectedYard, setSelectedYard] = useState<Yard | null>(null);
   const [zip, setZip] = useState("");
 
+  const [yardOpen, setYardOpen] = useState(false);
+  const yardWrapRef = useRef<HTMLDivElement | null>(null);
+
   const [vehiclePrice, setVehiclePrice] = useState("10000");
   const [extraCosts, setExtraCosts] = useState("0");
   const [insuranceEnabled, setInsuranceEnabled] = useState(true);
@@ -721,10 +724,30 @@ export default function Page() {
 
   const suggestions = useMemo(() => searchYards(yardQuery, auctionHouse, 12), [yardQuery, auctionHouse]);
 
+  // zamykanie listy po kliknięciu poza komponentem
+  useEffect(() => {
+    if (!yardOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = yardWrapRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) setYardOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setYardOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [yardOpen]);
+
   useEffect(() => {
     setSelectedYard(null);
     setYardQuery("");
     setZip("");
+    setYardOpen(false);
   }, [auctionHouse]);
 
   const calc = useMemo(() => {
@@ -872,11 +895,6 @@ export default function Page() {
           >
             Wejdź
           </button>
-
-          <div className="mt-4 text-[11px] text-gray-500">
-            Uwaga: to jest proste zabezpieczenie (hasło może zostać podejrzane w kodzie strony). Jeśli chcesz &quot;twardą&quot;
-            ochronę, trzeba zrobić to po stronie serwera.
-          </div>
         </div>
       </div>
     );
@@ -942,19 +960,26 @@ export default function Page() {
             </select>
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={yardWrapRef}>
             <label className="text-sm font-semibold text-gray-600">Plac (USA)</label>
             <input
               className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
               value={yardQuery}
+              onFocus={() => {
+                if (yardQuery.trim().length > 0) setYardOpen(true);
+              }}
               onChange={(e) => {
                 setYardQuery(e.target.value);
                 setSelectedYard(null);
+                setYardOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setYardOpen(true);
               }}
               placeholder="Wpisz miasto / stan / ZIP"
             />
 
-            {yardQuery.trim().length > 0 && suggestions.length > 0 && (
+            {yardOpen && yardQuery.trim().length > 0 && suggestions.length > 0 && (
               <div className="absolute z-20 mt-2 w-full bg-white border rounded-xl shadow-lg overflow-hidden">
                 {suggestions.map((y) => (
                   <button
@@ -965,6 +990,7 @@ export default function Page() {
                       setSelectedYard(y);
                       setYardQuery(yardDisplay(y));
                       setZip(y.zip);
+                      setYardOpen(false);
                     }}
                   >
                     <span className="text-sm font-medium">{yardDisplay(y)}</span>
@@ -976,6 +1002,17 @@ export default function Page() {
 
             {selectedYard && (
               <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
+            )}
+
+            {/* szybki przycisk do schowania listy (np. na mobile) */}
+            {yardOpen && (
+              <button
+                type="button"
+                className="absolute right-2 top-8 text-[11px] px-2 py-1 rounded-lg border bg-white hover:bg-slate-50"
+                onClick={() => setYardOpen(false)}
+              >
+                Zamknij
+              </button>
             )}
           </div>
 
