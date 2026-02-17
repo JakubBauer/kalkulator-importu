@@ -798,11 +798,12 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 export default function Page() {
   // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
   // Zmień na własne.
-  const APP_PASSWORD = "USAImportAuto";
+  const APP_PASSWORD = "USAImporAuto";
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
   const [authOk, setAuthOk] = useState(false);
   const [authInput, setAuthInput] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
   const [exciseGrossPln, setExciseGrossPln] = useState("0");
   const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
@@ -1034,19 +1035,34 @@ export default function Page() {
 
           <div className="mt-6 space-y-2">
             <label className="text-sm font-semibold text-gray-600">Hasło</label>
-            <input
-              className="w-full rounded-xl border p-3 focus:ring-2 focus:ring-black"
-              type="password"
-              value={authInput}
-              onChange={(e) => {
-                setAuthInput(e.target.value);
-                setAuthError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleLogin();
-              }}
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                className="w-full rounded-xl border p-3 pr-24 focus:ring-2 focus:ring-black"
+                type={showPassword ? "text" : "password"}
+                name="app-password"
+                id="app-password"
+                autoComplete="current-password"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                value={authInput}
+                onChange={(e) => {
+                  setAuthInput(e.target.value);
+                  setAuthError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-600 hover:text-black"
+              >
+                {showPassword ? "Ukryj" : "Pokaż"}
+              </button>
+            </div>
             {authError && <div className="text-sm text-red-600">{authError}</div>}
           </div>
 
