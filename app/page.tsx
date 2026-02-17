@@ -1,19 +1,20 @@
 "use client";
-
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ================= PORTY USA =================
 const PORTS = {
-  NJ: { name: "Port Newark / NJ", ocean: 900 },
-  GA: { name: "Port Savannah / GA", ocean: 900 },
-  TX: { name: "Port Houston / TX", ocean: 975 },
-  LA: { name: "Port Los Angeles / CA", ocean: 1500 },
+  NJ: { name: "Port Newark / NJ", lat: 40.6887, lon: -74.1482, ocean: 900 },
+  GA: { name: "Port Savannah / GA", lat: 32.0835, lon: -81.0971, ocean: 900 },
+  TX: { name: "Port Houston / TX", lat: 29.7323, lon: -95.262, ocean: 975 },
+  LA: { name: "Port Los Angeles / CA", lat: 33.7326, lon: -118.2737, ocean: 1500 },
 } as const;
 
 type PortKey = keyof typeof PORTS;
-
 type AuctionHouse = "copart" | "iaai" | "manheim";
+type BuyerType = "private" | "company";
 type VehicleSize = "sedan" | "suv" | "bigsuv" | "oversize";
+
+type ExciseRate = 0.015 | 0.031 | 0.093 | 0.186;
 
 // ================= MNOŻNIKI WIELKOŚCI AUTA =================
 const SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
@@ -23,6 +24,7 @@ const SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
   oversize: 2,
 };
 
+// Mnożnik transportu lądowego (różny od morskiego)
 const INLAND_SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
   sedan: 1,
   suv: 1.2,
@@ -30,8 +32,10 @@ const INLAND_SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
   oversize: 1.8,
 };
 
-// ================= PLACEHOLDER LISTY PLACÓW =================
-// Wklej swoją listę w YARDS_USA (zostawiłem typ, żeby Ci się ładnie trzymało)
+// ================= PLACE (COPART / IAAI) =================
+// Autocomplete działa TYLKO na bazie tej listy i jest filtrowany wg wybranego domu aukcyjnego.
+// Na tę chwilę dodałem place Copart z Twojej listy (USA). IAAI dopiszemy analogicznie.
+
 type Yard = {
   provider: AuctionHouse;
   state: string;
@@ -625,530 +629,745 @@ const YARDS_USA: Yard[] = [
 
   // ===== END IAAI =====
 ];
-// ================= HELPERS =================
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+
+// NOTE: Nie używamy \p{...} (Unicode Property Escapes), bo w części środowisk (np. pewne bundlery/wykonania)
+// może to rzucać błędem typu "Invalid regular expression".
+// Zamiast tego usuwamy znaki diakrytyczne po NFD, kasując zakres łączników U+0300–U+036F.
+function normalize(s: string) {
+  return s
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function clamp0(n: number) {
-  return Math.max(0, Number.isFinite(n) ? n : 0);
+function yardDisplay(y: Yard) {
+  const lbl = y.label ? ` (${y.label})` : "";
+  return `${y.state} - ${y.city}${lbl}`;
 }
 
-function fmtMoney(n: number, currency: "USD" | "EUR" | "PLN") {
-  const value = Number.isFinite(n) ? n : 0;
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency,
+function searchYards(query: string, provider: AuctionHouse, limit = 12) {
+  const q = normalize(query);
+  if (!q) return [] as Yard[];
+
+  const byProvider = YARDS_USA.filter((y) => y.provider === provider);
+  const starts: Yard[] = [];
+  const contains: Yard[] = [];
+
+  for (const y of byProvider) {
+    const hay = normalize(`${y.state} ${y.city} ${y.zip} ${yardDisplay(y)}`);
+    const city = normalize(y.city);
+    const st = normalize(y.state);
+    const zip = normalize(y.zip);
+
+    if (city.startsWith(q) || st.startsWith(q) || zip.startsWith(q) || hay.startsWith(q)) {
+      starts.push(y);
+    } else if (hay.includes(q)) {
+      contains.push(y);
+    }
+  }
+
+  return [...starts, ...contains].slice(0, limit);
+}
+
+// ================= STAŁE KOSZTOWE =================
+const AUCTION_MIN_FEE = 580;
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function clamp01(x: number) {
+  return Math.min(1, Math.max(0, x));
+}
+
+function calcAuctionRate(priceUSD: number) {
+  const p = priceUSD;
+  if (p <= 1000) return 0;
+  if (p <= 2000) return 0.345;
+  if (p <= 3000) return 0.295;
+  if (p <= 4000) return 0.245;
+  if (p <= 5000) return 0.195;
+
+  if (p <= 10000) {
+    const t = clamp01((p - 5000) / (10000 - 5000));
+    return lerp(0.195, 0.127, t);
+  }
+  if (p <= 15000) {
+    const t = clamp01((p - 10000) / (15000 - 10000));
+    return lerp(0.127, 0.107, t);
+  }
+  if (p <= 20000) {
+    const t = clamp01((p - 15000) / (20000 - 15000));
+    return lerp(0.107, 0.088, t);
+  }
+  if (p <= 40000) {
+    const t = clamp01((p - 20000) / (40000 - 20000));
+    return lerp(0.088, 0.08, t);
+  }
+  return 0.08;
+}
+
+function calcAuctionFee(priceUSD: number) {
+  if (priceUSD <= 1000) return AUCTION_MIN_FEE + 120;
+  const rate = calcAuctionRate(priceUSD);
+  return Math.max(priceUSD * rate, AUCTION_MIN_FEE) + 120;
+}
+
+const INLAND_RATE = 2.3; // 2,3$ za milę
+const INLAND_MIN = 400;  // minimum 400$
+const INLAND_MAX = 2000; // maksimum 2000$
+
+const INSURANCE_RATE = 0.02;
+const INSURANCE_MIN = 200;
+
+const CUSTOMS_AGENCY_EUR = 500;
+const POLAND_FIXED_PLN = 2800;
+const COMPANY_COMMISSION_PLN = 3300;
+
+function n2(x: number) {
+  const v = Number.isFinite(x) ? x : 0;
+  return v.toLocaleString("pl-PL", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  });
 }
 
-function fmtNumber(n: number) {
-  const value = Number.isFinite(n) ? n : 0;
-  return new Intl.NumberFormat("pl-PL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+function parseNum(v: unknown) {
+  if (!v) return 0;
+  const cleaned = String(v).replace(/\s/g, "").replace(",", ".");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
 }
 
-// ================= ROZBICIE "DODATKOWE KOSZTY" + ABSORPCJA =================
-type AdditionalBreakdown = {
-  brokerage: number; // Opłata brokerska
-  safeLoading: number; // Bezpieczny załadunek
-  unloading: number; // Rozładunek
-  securingMaterials: number; // Materiały zabezpieczające
-  usaService: number; // Obsługa USA
-  absorbedInland: number; // wchłonięte w transport lądowy
-  absorbedOcean: number; // wchłonięte w transport morski
-};
-
-const ABSORB_INLAND_PCT = 0.2; // 20% additional -> inland (widok klienta)
-const ABSORB_OCEAN_PCT = 0.2; // 20% additional -> ocean (widok klienta)
-
-// pozostałe 60% rozbijamy na 5 pozycji (suma wag = 1.0)
-const BREAKDOWN_WEIGHTS = {
-  brokerage: 0.25,
-  safeLoading: 0.2,
-  unloading: 0.15,
-  securingMaterials: 0.2,
-  usaService: 0.2,
-};
-
-function allocateAdditionalCosts(additionalCosts: number): AdditionalBreakdown {
-  const A = clamp0(additionalCosts);
-
-  const absorbedInland = round2(A * ABSORB_INLAND_PCT);
-  const absorbedOcean = round2(A * ABSORB_OCEAN_PCT);
-
-  const remaining = round2(Math.max(0, A - absorbedInland - absorbedOcean));
-
-  const brokerage = round2(remaining * BREAKDOWN_WEIGHTS.brokerage);
-  const safeLoading = round2(remaining * BREAKDOWN_WEIGHTS.safeLoading);
-  const unloading = round2(remaining * BREAKDOWN_WEIGHTS.unloading);
-  const securingMaterials = round2(remaining * BREAKDOWN_WEIGHTS.securingMaterials);
-
-  // domykamy do grosza na ostatniej pozycji
-  const sumFirst4 = brokerage + safeLoading + unloading + securingMaterials;
-  const usaService = round2(remaining - sumFirst4);
-
-  return {
-    brokerage,
-    safeLoading,
-    unloading,
-    securingMaterials,
-    usaService,
-    absorbedInland,
-    absorbedOcean,
-  };
+function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 3958.7613;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
-// ================= UI COMPONENTS =================
-function InputRow(props: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  suffix?: string;
-  step?: number;
-}) {
-  const { label, value, onChange, suffix, step } = props;
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="text-sm text-white/80">{label}</div>
-      <div className="flex items-center gap-2">
-        <input
-          className="w-36 rounded-lg bg-white/10 px-3 py-2 text-right text-white outline-none ring-1 ring-white/10 focus:ring-white/30"
-          type="number"
-          step={step ?? 0.01}
-          value={Number.isFinite(value) ? value : 0}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-        />
-        {suffix ? <div className="text-xs text-white/60 w-10">{suffix}</div> : null}
-      </div>
-    </div>
-  );
+async function geocodeZipUS(zip: string) {
+  const z = zip?.trim();
+  if (!z) return null;
+
+  // Nominatim bywa kapryśny na postalcode=, więc korzystamy z q=
+  const url =
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=` +
+    encodeURIComponent(z);
+
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) return null;
+
+  const lat = Number(data[0].lat);
+  const lon = Number(data[0].lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  return { lat, lon } as { lat: number; lon: number };
 }
 
-function SelectRow<T extends string>(props: {
-  label: string;
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  const { label, value, onChange, options } = props;
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="text-sm text-white/80">{label}</div>
-      <select
-        className="w-56 rounded-lg bg-white/10 px-3 py-2 text-white outline-none ring-1 ring-white/10 focus:ring-white/30"
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value} className="bg-neutral-900">
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+async function fetchNBPRate(code: string) {
+  try {
+    const res = await fetch(`https://api.nbp.pl/api/exchangerates/rates/A/${code}/?format=json`);
+    const data = await res.json();
+    return data.rates[0].mid as number;
+  } catch {
+    return null;
+  }
 }
 
-function LineItem(props: { label: string; value: string; bold?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 py-1">
-      <div className={"text-white/70 " + (props.bold ? "font-semibold" : "text-sm")}>
-        {props.label}
-      </div>
-      <div className={"text-white " + (props.bold ? "text-base font-semibold" : "text-sm")}>
-        {props.value}
-      </div>
-    </div>
-  );
+function usdToEur(usd: number, usdPln: number, eurPln: number) {
+  if (!(usdPln > 0) || !(eurPln > 0)) return 0;
+  return (usd * usdPln) / eurPln;
 }
+
+// ================= COMPONENT =================
+const SECRET = "USAImportAuto";
 
 export default function Page() {
-  // ================= STATE (INPUTS) =================
-  const [tab, setTab] = useState<"calc" | "client">("calc");
+  const [unlocked, setUnlocked] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const [vehicleSize, setVehicleSize] = useState<VehicleSize>("sedan");
-  const [port, setPort] = useState<PortKey>("NJ");
-  const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = localStorage.getItem("app_unlocked");
+      if (saved === "true") setUnlocked(true);
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  // Podstawy USA (USD)
-  const [priceWithAuctionFees, setPriceWithAuctionFees] = useState<number>(11390); // Cena z prowizją domu aukcyjnego
-  const [inlandBase, setInlandBase] = useState<number>(400); // Transport lądowy (bazowy)
-  const [oceanBase, setOceanBase] = useState<number>(PORTS[port].ocean); // Transport morski (bazowy)
-  const [insurance, setInsurance] = useState<number>(200);
-  const [additionalCosts, setAdditionalCosts] = useState<number>(1500);
+  if (!mounted) return null;
 
-  // Kursy / podatki / PL
-  const [usdPln, setUsdPln] = useState<number>(4.25);
-  const [usdEur, setUsdEur] = useState<number>(0.92);
-
-  const [dutyRate, setDutyRate] = useState<number>(0.1); // cło 10% (przykładowo)
-  const [vatRate, setVatRate] = useState<number>(0.23); // VAT 23%
-  const [customsAgencyEur, setCustomsAgencyEur] = useState<number>(500); // agencja celna (EUR)
-
-  const [plTransportPln, setPlTransportPln] = useState<number>(2800);
-  const [plCommissionPln, setPlCommissionPln] = useState<number>(3300);
-
-  // Depozyt
-  const [depositPln, setDepositPln] = useState<number>(3300);
-
-  // ================= DERIVED / CALC =================
-  const breakdown = useMemo(() => allocateAdditionalCosts(additionalCosts), [additionalCosts]);
-
-  // Auto size multipliers
-  const inland = round2(clamp0(inlandBase) * INLAND_SIZE_MULTIPLIERS[vehicleSize]);
-  const ocean = round2(clamp0(oceanBase) * SIZE_MULTIPLIERS[vehicleSize]);
-
-  const totalUSA_USD = useMemo(() => {
-    return round2(
-      clamp0(priceWithAuctionFees) +
-        inland +
-        ocean +
-        clamp0(insurance) +
-        clamp0(additionalCosts)
+  if (!unlocked) {
+    return (
+      <PasswordScreen
+        onUnlock={() => {
+          try {
+            localStorage.setItem("app_unlocked", "true");
+          } catch {
+            // ignore
+          }
+          setUnlocked(true);
+        }}
+      />
     );
-  }, [priceWithAuctionFees, inland, ocean, insurance, additionalCosts]);
+  }
 
-  // Rotterdam section in EUR (bazujemy na totalUSA przeliczone na EUR)
-  const baseEURO = round2(totalUSA_USD * clamp0(usdEur));
-  const dutyEUR = round2(baseEURO * clamp0(dutyRate));
-  const vatEUR = round2((baseEURO + dutyEUR) * clamp0(vatRate));
-  const rotterdamTotalEUR = round2(dutyEUR + vatEUR + clamp0(customsAgencyEur));
-
-  // Final PLN
-  const totalPLN = round2(
-    totalUSA_USD * clamp0(usdPln) + rotterdamTotalEUR * (clamp0(usdPln) / clamp0(usdEur || 1)) + // EUR->PLN z usdPln/usdEur
-      clamp0(plTransportPln) +
-      clamp0(plCommissionPln)
-  );
-
-  // Depozyt / maks licytacja
-  const depositUSD = round2(clamp0(depositPln) / clamp0(usdPln || 1));
-  const penaltyUSD = round2(depositUSD); // 10% = depozyt (jak u Ciebie na screenie)
-  const maxBidUSD = round2(depositUSD * 10);
-
-  // ================= CLIENT VIEW VALUES (ABSORPCJA) =================
-  // W widoku klienta nie pokazujemy "Dodatkowe koszty".
-  // Zamiast tego:
-  // - inlandClient = inland + absorbedInland
-  // - oceanClient  = ocean + absorbedOcean
-  // - dodatkowe = 5 pozycji (sumują się do reszty)
-  const inlandClient = round2(inland + breakdown.absorbedInland);
-  const oceanClient = round2(ocean + breakdown.absorbedOcean);
-
-  const additionalClientSum = round2(
-    breakdown.brokerage +
-      breakdown.safeLoading +
-      breakdown.unloading +
-      breakdown.securingMaterials +
-      breakdown.usaService
-  );
-
-  const totalUSAClient_USD = round2(
-    clamp0(priceWithAuctionFees) + inlandClient + oceanClient + clamp0(insurance) + additionalClientSum
-  );
-
-  // Bez ruszania ceł/VAT/PL — liczymy identycznie, tylko bazą jest totalUSAClient
-  // (ALE ma wyjść ta sama suma, więc totalUSAClient == totalUSA_USD)
-  const baseEUROClient = round2(totalUSAClient_USD * clamp0(usdEur));
-  const dutyEURClient = round2(baseEUROClient * clamp0(dutyRate));
-  const vatEURClient = round2((baseEUROClient + dutyEURClient) * clamp0(vatRate));
-  const rotterdamTotalEURClient = round2(dutyEURClient + vatEURClient + clamp0(customsAgencyEur));
-
-  const totalPLNClient = round2(
-    totalUSAClient_USD * clamp0(usdPln) +
-      rotterdamTotalEURClient * (clamp0(usdPln) / clamp0(usdEur || 1)) +
-      clamp0(plTransportPln) +
-      clamp0(plCommissionPln)
-  );
-
-  // ================= UI =================
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Tabs */}
-        <div className="mb-6 flex items-center gap-2">
-          <button
-            onClick={() => setTab("calc")}
-            className={
-              "rounded-xl px-4 py-2 text-sm ring-1 transition " +
-              (tab === "calc"
-                ? "bg-white/15 ring-white/30"
-                : "bg-white/5 ring-white/10 hover:bg-white/10")
-            }
-          >
-            Kalkulator
-          </button>
-          <button
-            onClick={() => setTab("client")}
-            className={
-              "rounded-xl px-4 py-2 text-sm ring-1 transition " +
-              (tab === "client"
-                ? "bg-white/15 ring-white/30"
-                : "bg-white/5 ring-white/10 hover:bg-white/10")
-            }
-          >
-            Rozliczenie dla klienta
-          </button>
+    <MainApp
+      onLogout={() => {
+        try {
+          localStorage.removeItem("app_unlocked");
+        } catch {
+          // ignore
+        }
+        setUnlocked(false);
+      }}
+    />
+  );
+}
 
-          <div className="ml-auto text-xs text-white/50">
-            (Wspólne wyliczenia • suma końcowa taka sama)
-          </div>
+function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState(false);
+  const isComposing = useRef(false);
+
+  function normalizePass(value: string) {
+    return value.replace(/ /g, " ").trim();
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const cleaned = normalizePass(password);
+    if (cleaned === SECRET) {
+      setError(false);
+      onUnlock();
+    } else {
+      setError(true);
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="text-2xl font-bold tracking-tight">Dostęp chroniony</div>
+          <p className="mt-1 text-sm text-gray-600">Wpisz hasło, aby uruchomić kalkulator.</p>
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="app-password" className="mb-1 block text-sm font-semibold text-gray-600">
+                Hasło
+              </label>
+
+              <div className="relative">
+                <input
+                  id="app-password"
+                  name="app_unlock"
+                  type={show ? "text" : "password"}
+                  inputMode="text"
+                  autoComplete="current-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="w-full rounded-xl border p-3 pr-24 focus:outline-none focus:ring-2 focus:ring-black"
+                  value={password}
+                  onCompositionStart={() => (isComposing.current = true)}
+                  onCompositionEnd={(e) => {
+                    isComposing.current = false;
+                    setPassword((e.target as HTMLInputElement).value);
+                    setError(false);
+                  }}
+                  onChange={(e) => {
+                    if (isComposing.current) return;
+                    setPassword(e.target.value);
+                    setError(false);
+                  }}
+                  onPaste={(e) => {
+                    requestAnimationFrame(() => {
+                      setPassword((e.target as HTMLInputElement).value);
+                      setError(false);
+                    });
+                  }}
+                  placeholder="••••••••"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShow((s) => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                >
+                  {show ? "Ukryj" : "Pokaż"}
+                </button>
+              </div>
+
+              {error && <p className="mt-2 text-sm text-red-600">Nieprawidłowe hasło.</p>}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold"
+            >
+              Wejdź
+            </button>
+          </form>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-          {/* LEFT: Inputs */}
-          <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
-            <div className="mb-3 text-lg font-semibold">Ustawienia</div>
+function MainApp({ onLogout }: { onLogout: () => void }) {
+  const [buyerType, setBuyerType] = useState<BuyerType>("private");
+  const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
+  const [exciseGrossPln, setExciseGrossPln] = useState("0");
+  const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
+  const [vehicleSize, setVehicleSize] = useState<VehicleSize>("sedan");
 
-            <SelectRow
-              label="Dom aukcyjny"
-              value={auctionHouse}
-              onChange={setAuctionHouse}
-              options={[
-                { value: "copart", label: "Copart" },
-                { value: "iaai", label: "IAAI" },
-                { value: "manheim", label: "Manheim" },
-              ]}
-            />
+  const [yardQuery, setYardQuery] = useState("");
+  const [selectedYard, setSelectedYard] = useState<Yard | null>(null);
+  const [zip, setZip] = useState("");
 
-            <SelectRow
-              label="Rozmiar auta"
+  const [yardOpen, setYardOpen] = useState(false);
+  const yardWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const [vehiclePrice, setVehiclePrice] = useState("10000");
+  const [extraCosts, setExtraCosts] = useState("0");
+  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
+
+  const [usdPln, setUsdPln] = useState<number | null>(null);
+  const [eurPln, setEurPln] = useState<number | null>(null);
+
+  const [zipCoord, setZipCoord] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const [u, e] = await Promise.all([fetchNBPRate("USD"), fetchNBPRate("EUR")]);
+      setUsdPln(u);
+      setEurPln(e);
+    })();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const z = zip.trim();
+
+    if (z.length < 3) {
+      setZipCoord(null);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
+      const c = await geocodeZipUS(z);
+      if (alive) setZipCoord(c);
+    }, 350);
+
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+  }, [zip]);
+
+  const suggestions = useMemo(() => searchYards(yardQuery, auctionHouse, 12), [yardQuery, auctionHouse]);
+
+  useEffect(() => {
+    if (!yardOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = yardWrapRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) setYardOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setYardOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [yardOpen]);
+
+  useEffect(() => {
+    setSelectedYard(null);
+    setYardQuery("");
+    setZip("");
+    setYardOpen(false);
+  }, [auctionHouse]);
+
+  const calc = useMemo(() => {
+    const priceUSD = parseNum(vehiclePrice);
+    const extraUSD = parseNum(extraCosts);
+
+    let bestPort: PortKey = "NJ";
+    let bestMiles = Number.POSITIVE_INFINITY;
+
+    if (zipCoord) {
+      for (const k of Object.keys(PORTS) as PortKey[]) {
+        const p = PORTS[k];
+        const miles = haversineMiles(zipCoord.lat, zipCoord.lon, p.lat, p.lon);
+        if (miles < bestMiles) {
+          bestMiles = miles;
+          bestPort = k;
+        }
+      }
+    }
+
+    const port = PORTS[bestPort];
+    const sizeOceanMult = SIZE_MULTIPLIERS[vehicleSize];
+    const sizeInlandMult = INLAND_SIZE_MULTIPLIERS[vehicleSize];
+
+    const baseInland = zipCoord ? bestMiles * INLAND_RATE : INLAND_MIN;
+    const inlandPreClamp = Math.max(baseInland, INLAND_MIN) * sizeInlandMult;
+    const inland = Math.min(inlandPreClamp, INLAND_MAX);
+
+    const oceanPreClamp = port.ocean * sizeOceanMult;
+    const ocean = Math.min(oceanPreClamp, 2750);
+    const auctionFee = calcAuctionFee(priceUSD);
+    const insurance = insuranceEnabled ? Math.max(priceUSD * INSURANCE_RATE, INSURANCE_MIN) : 0;
+
+    const usaTotalUSD = priceUSD + auctionFee + inland + ocean + insurance + extraUSD;
+
+    const usdPlnSafe = usdPln ?? 0;
+    const eurPlnSafe = eurPln ?? 0;
+
+    const isCompanyLike = buyerType === "company" || priceUSD < 3000;
+
+    let dutyEUR = 0;
+    let vatEUR = 0;
+
+    if (isCompanyLike) {
+      const transportUSD = inland + ocean;
+      const customsValueUSD = priceUSD + transportUSD;
+      const dutyBaseUSD = customsValueUSD + insurance;
+
+      const dutyBaseEUR = usdToEur(dutyBaseUSD, usdPlnSafe, eurPlnSafe);
+      dutyEUR = Math.max(dutyBaseEUR * 0.1, 300);
+
+      const vatBaseEUR = usdToEur(customsValueUSD, usdPlnSafe, eurPlnSafe) + dutyEUR;
+      vatEUR = Math.max(vatBaseEUR * 0.21, 300);
+    } else {
+      const baseEUR = usdToEur(priceUSD * 0.6, usdPlnSafe, eurPlnSafe);
+      dutyEUR = Math.max(baseEUR * 0.1, 300);
+      vatEUR = Math.max((baseEUR + dutyEUR) * 0.21, 300);
+    }
+
+    const rotterdamTotalEUR = dutyEUR + vatEUR + CUSTOMS_AGENCY_EUR;
+
+    const usaTotalPLN = usdPlnSafe > 0 ? usaTotalUSD * usdPlnSafe : 0;
+    const rotterdamTotalPLN = eurPlnSafe > 0 ? rotterdamTotalEUR * eurPlnSafe : 0;
+
+    const totalPLN = usaTotalPLN + rotterdamTotalPLN + POLAND_FIXED_PLN + COMPANY_COMMISSION_PLN;
+
+    const exciseGross = parseNum(exciseGrossPln);
+    const exciseNet = exciseGross > 0 ? exciseGross / 1.23 : 0;
+    const exciseVatPl = exciseGross > 0 ? exciseGross - exciseNet : 0;
+    const exciseAmount = Math.max(0, exciseNet * exciseRate);
+
+    const depositMinPLN = 3300;
+
+    const penaltyRateMap: Record<AuctionHouse, number> = {
+      copart: 0.1,
+      iaai: 0.15,
+      manheim: 0.3,
+    };
+
+    const penaltyRate = penaltyRateMap[auctionHouse];
+
+    const requiredDepositUSD = Math.max(0, priceUSD * penaltyRate);
+    const requiredDepositPLN = usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
+
+    const depositPLN = depositMinPLN;
+    const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
+
+    const maxBidUSD = penaltyRate > 0 ? depositUSD / penaltyRate : 0;
+
+    return {
+      portName: port.name,
+      auctionFee,
+      inland,
+      ocean,
+      insurance,
+      usaTotalUSD,
+      dutyEUR,
+      vatEUR,
+      rotterdamTotalEUR,
+      totalPLN,
+      exciseRate,
+      exciseGross,
+      exciseVatPl,
+      exciseAmount,
+      depositUSD,
+      penaltyRate,
+      maxBidUSD,
+      requiredDepositUSD,
+      requiredDepositPLN,
+    };
+  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl p-8 space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="ml-auto text-xs rounded-lg border px-3 py-2 hover:bg-slate-50"
+              title="Wyloguj"
+            >
+              Wyloguj
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
+              <div className="text-sm text-gray-500 mt-1">Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Rodzaj klienta</label>
+              <select
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={buyerType}
+                onChange={(e) => setBuyerType(e.target.value as BuyerType)}
+              >
+                <option value="private">Osoba prywatna</option>
+                <option value="company">Firma</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Dom aukcyjny</label>
+              <select
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={auctionHouse}
+                onChange={(e) => setAuctionHouse(e.target.value as AuctionHouse)}
+              >
+                <option value="copart">Copart</option>
+                <option value="iaai">IAAI</option>
+                <option value="manheim">Manheim</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-600">Wielkość auta</label>
+            <select
+              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
               value={vehicleSize}
-              onChange={setVehicleSize}
-              options={[
-                { value: "sedan", label: "Sedan" },
-                { value: "suv", label: "SUV" },
-                { value: "bigsuv", label: "Duży SUV" },
-                { value: "oversize", label: "Oversize" },
-              ]}
-            />
+              onChange={(e) => setVehicleSize(e.target.value as VehicleSize)}
+            >
+              <option value="sedan">Sedan</option>
+              <option value="suv">SUV</option>
+              <option value="bigsuv">Big SUV</option>
+              <option value="oversize">Oversize</option>
+            </select>
+          </div>
 
-            <SelectRow
-              label="Najbliższy port"
-              value={port}
-              onChange={(p) => {
-                setPort(p);
-                setOceanBase(PORTS[p].ocean);
+          <div className="relative" ref={yardWrapRef}>
+            <label className="text-sm font-semibold text-gray-600">Plac (USA)</label>
+            <input
+              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+              value={yardQuery}
+              onFocus={() => {
+                if (yardQuery.trim().length > 0) setYardOpen(true);
               }}
-              options={[
-                { value: "NJ", label: "Port Newark / NJ" },
-                { value: "GA", label: "Port Savannah / GA" },
-                { value: "TX", label: "Port Houston / TX" },
-                { value: "LA", label: "Port Los Angeles / CA" },
-              ]}
+              onChange={(e) => {
+                const v = e.target.value;
+                setYardQuery(v);
+                setSelectedYard(null);
+
+                const maybeZip = v.replace(/[^0-9]/g, "").slice(0, 5);
+                if (maybeZip.length === 5) {
+                  setZip(maybeZip);
+                }
+
+                setYardOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setYardOpen(true);
+              }}
+              placeholder="Wpisz miasto / stan / ZIP"
             />
 
-            <div className="my-4 h-px bg-white/10" />
-
-            <div className="mb-2 text-sm font-semibold text-white/80">USA (USD)</div>
-            <InputRow
-              label="Cena z prowizją domu aukcyjnego"
-              value={priceWithAuctionFees}
-              onChange={(v) => setPriceWithAuctionFees(clamp0(v))}
-              suffix="USD"
-            />
-            <InputRow
-              label="Transport lądowy (bazowy)"
-              value={inlandBase}
-              onChange={(v) => setInlandBase(clamp0(v))}
-              suffix="USD"
-            />
-            <InputRow
-              label="Transport morski (bazowy)"
-              value={oceanBase}
-              onChange={(v) => setOceanBase(clamp0(v))}
-              suffix="USD"
-            />
-            <InputRow
-              label="Ubezpieczenie"
-              value={insurance}
-              onChange={(v) => setInsurance(clamp0(v))}
-              suffix="USD"
-            />
-
-            {tab === "calc" ? (
-              <InputRow
-                label="Dodatkowe koszty"
-                value={additionalCosts}
-                onChange={(v) => setAdditionalCosts(clamp0(v))}
-                suffix="USD"
-              />
-            ) : (
-              <div className="mt-2 rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                <div className="text-xs text-white/60 mb-2">
-                  W rozliczeniu klienta nie pokazujemy „Dodatkowych kosztów”.
-                </div>
-                <div className="text-xs text-white/70">
-                  Rozbijane + częściowo wchłaniane do transportów (suma bez zmian).
-                </div>
+            {yardOpen && yardQuery.trim().length > 0 && suggestions.length > 0 && (
+              <div className="absolute z-20 mt-2 w-full bg-white border rounded-xl shadow-lg overflow-hidden">
+                {suggestions.map((y) => (
+                  <button
+                    key={y.provider + y.zip + y.state + y.city}
+                    type="button"
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between"
+                    onClick={() => {
+                      setSelectedYard(y);
+                      setYardQuery(yardDisplay(y));
+                      setZip(y.zip);
+                      setYardOpen(false);
+                    }}
+                  >
+                    <span className="text-sm font-medium">{yardDisplay(y)}</span>
+                    <span className="text-xs text-gray-500">{y.zip}</span>
+                  </button>
+                ))}
               </div>
             )}
 
-            <div className="my-4 h-px bg-white/10" />
+            {selectedYard && (
+              <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
+            )}
 
-            <div className="mb-2 text-sm font-semibold text-white/80">Kursy / Rotterdam / PL</div>
-            <InputRow label="USD→PLN" value={usdPln} onChange={(v) => setUsdPln(clamp0(v))} step={0.0001} />
-            <InputRow label="USD→EUR" value={usdEur} onChange={(v) => setUsdEur(clamp0(v))} step={0.0001} />
-            <InputRow
-              label="Cło (stawka)"
-              value={dutyRate}
-              onChange={(v) => setDutyRate(clamp0(v))}
-              step={0.001}
-              suffix=""
-            />
-            <InputRow
-              label="VAT (stawka)"
-              value={vatRate}
-              onChange={(v) => setVatRate(clamp0(v))}
-              step={0.001}
-              suffix=""
-            />
-            <InputRow
-              label="Agencja celna"
-              value={customsAgencyEur}
-              onChange={(v) => setCustomsAgencyEur(clamp0(v))}
-              suffix="EUR"
-            />
-            <InputRow
-              label="PL: Transport"
-              value={plTransportPln}
-              onChange={(v) => setPlTransportPln(clamp0(v))}
-              suffix="PLN"
-            />
-            <InputRow
-              label="PL: Prowizja"
-              value={plCommissionPln}
-              onChange={(v) => setPlCommissionPln(clamp0(v))}
-              suffix="PLN"
-            />
+            {yardOpen && (
+              <button
+                type="button"
+                className="absolute right-2 top-8 text-[11px] px-2 py-1 rounded-lg border bg-white hover:bg-slate-50"
+                onClick={() => setYardOpen(false)}
+              >
+                Zamknij
+              </button>
+            )}
+          </div>
 
-            <div className="my-4 h-px bg-white/10" />
-
-            <div className="mb-2 text-sm font-semibold text-white/80">Depozyt</div>
-            <InputRow
-              label="Depozyt (PLN)"
-              value={depositPln}
-              onChange={(v) => setDepositPln(clamp0(v))}
-              suffix="PLN"
-            />
-
-            {/* Placeholder dla placów – żeby Ci nie rozjechało logiki po wklejeniu listy */}
-            <div className="mt-4 text-xs text-white/40">
-              Place/yards: masz placeholder <span className="text-white/60">YARDS_USA</span>. Wklej listę u góry pliku.
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm font-semibold text-gray-600">ZIP</label>
+              <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={zip} onChange={(e) => setZip(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Cena zakupu (USD)</label>
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={vehiclePrice}
+                onChange={(e) => setVehiclePrice(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* RIGHT: Result card like your screen */}
-          <div className="rounded-[28px] bg-gradient-to-b from-black to-neutral-900 p-6 ring-1 ring-white/10">
-            <div className="text-xs tracking-widest text-white/50">NAJBLIŻSZY PORT</div>
-            <div className="text-3xl font-semibold">{PORTS[port].name}</div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" checked={insuranceEnabled} onChange={(e) => setInsuranceEnabled(e.target.checked)} />
+            <span className="text-sm">Ubezpieczenie transportu</span>
+          </div>
 
-            <div className="my-6 h-px bg-white/10" />
+          <div>
+            <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
+            <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} />
+          </div>
 
-            {/* USA (USD) */}
-            <div className="text-xs tracking-widest text-white/40">USA (USD)</div>
+          <div className="pt-2">
+            <div className="text-sm font-semibold text-gray-700">Akcyza (PL)</div>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+              <select
+                className="rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={String(exciseRate)}
+                onChange={(e) => setExciseRate(Number(e.target.value) as ExciseRate)}
+              >
+                <option value={0.015}>1,5%</option>
+                <option value={0.031}>3,1%</option>
+                <option value={0.093}>9,3%</option>
+                <option value={0.186}>18,6%</option>
+              </select>
 
-            {tab === "calc" ? (
-              <>
-                <LineItem
-                  label="Cena z prowizją domu aukcyjnego:"
-                  value={fmtMoney(priceWithAuctionFees, "USD")}
-                  bold
-                />
-                <LineItem label="Transport lądowy:" value={fmtMoney(inland, "USD")} bold />
-                <LineItem label="Transport morski:" value={fmtMoney(ocean, "USD")} bold />
-                <LineItem label="Ubezpieczenie:" value={fmtMoney(insurance, "USD")} bold />
-                <LineItem label="Dodatkowe koszty:" value={fmtMoney(additionalCosts, "USD")} bold />
-                <div className="mt-2" />
-                <LineItem label="Razem:" value={fmtMoney(totalUSA_USD, "USD")} bold />
-              </>
-            ) : (
-              <>
-                <LineItem
-                  label="Cena z prowizją domu aukcyjnego:"
-                  value={fmtMoney(priceWithAuctionFees, "USD")}
-                  bold
-                />
-                <LineItem label="Transport lądowy:" value={fmtMoney(inlandClient, "USD")} bold />
-                <LineItem label="Transport morski:" value={fmtMoney(oceanClient, "USD")} bold />
-                <LineItem label="Ubezpieczenie:" value={fmtMoney(insurance, "USD")} bold />
+              <input
+                className="rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                placeholder="Wartość (PLN brutto)"
+                value={exciseGrossPln}
+                onChange={(e) => setExciseGrossPln(e.target.value)}
+              />
 
-                <div className="mt-3 rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                  <div className="text-xs tracking-widest text-white/50 mb-2">ROZBICIE (ZAMIAST “DODATKOWE KOSZTY”)</div>
-                  <LineItem label="Opłata brokerska:" value={fmtMoney(breakdown.brokerage, "USD")} />
-                  <LineItem label="Bezpieczny załadunek:" value={fmtMoney(breakdown.safeLoading, "USD")} />
-                  <LineItem label="Rozładunek:" value={fmtMoney(breakdown.unloading, "USD")} />
-                  <LineItem label="Materiały zabezpieczające:" value={fmtMoney(breakdown.securingMaterials, "USD")} />
-                  <LineItem label="Obsługa USA:" value={fmtMoney(breakdown.usaService, "USD")} />
-                </div>
-
-                <div className="mt-2" />
-                <LineItem label="Razem:" value={fmtMoney(totalUSAClient_USD, "USD")} bold />
-              </>
-            )}
-
-            <div className="my-6 h-px bg-white/10" />
-
-            {/* Rotterdam (EUR) */}
-            <div className="text-xs tracking-widest text-white/40">ROTTERDAM (EUR)</div>
-
-            {tab === "calc" ? (
-              <>
-                <LineItem label="Cło:" value={fmtMoney(dutyEUR, "EUR")} bold />
-                <LineItem label="VAT:" value={fmtMoney(vatEUR, "EUR")} bold />
-                <LineItem label="Agencja celna:" value={fmtMoney(customsAgencyEur, "EUR")} bold />
-                <div className="mt-2" />
-                <LineItem label="Razem:" value={fmtMoney(rotterdamTotalEUR, "EUR")} bold />
-              </>
-            ) : (
-              <>
-                <LineItem label="Cło:" value={fmtMoney(dutyEURClient, "EUR")} bold />
-                <LineItem label="VAT:" value={fmtMoney(vatEURClient, "EUR")} bold />
-                <LineItem label="Agencja celna:" value={fmtMoney(customsAgencyEur, "EUR")} bold />
-                <div className="mt-2" />
-                <LineItem label="Razem:" value={fmtMoney(rotterdamTotalEURClient, "EUR")} bold />
-              </>
-            )}
-
-            <div className="my-6 h-px bg-white/10" />
-
-            {/* Polska (PLN) */}
-            <div className="text-xs tracking-widest text-white/40">POLSKA (PLN)</div>
-            <LineItem label="Transport:" value={fmtMoney(plTransportPln, "PLN")} bold />
-            <LineItem label="Prowizja:" value={fmtMoney(plCommissionPln, "PLN")} bold />
-
-            <div className="my-10" />
-
-            {/* Total */}
-            <div className="text-white/50 text-sm">Łączny koszt</div>
-            <div className="mt-1 text-6xl font-bold tracking-tight">
-              {tab === "calc" ? fmtNumber(totalPLN) : fmtNumber(totalPLNClient)}{" "}
-              <span className="text-2xl font-semibold text-white/80">PLN</span>
+              <div className="rounded-xl border p-2 bg-slate-50 flex items-center justify-between">
+                <span className="text-sm text-gray-600">Akcyza</span>
+                <span className="text-sm font-semibold">{n2(calc.exciseAmount)} PLN</span>
+              </div>
             </div>
 
-            <div className="my-8 h-px bg-white/10" />
+            <div className="mt-2 text-xs text-gray-500">VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN</div>
+          </div>
 
-            {/* Deposit / max bid */}
-            <div className="text-white/50 text-sm">DEPOZYT {fmtNumber(depositPln)} PLN</div>
-            <div className="mt-3 space-y-1">
-              <LineItem label="Depozyt w USD:" value={fmtMoney(depositUSD, "USD")} bold />
-              <LineItem label="Kara umowna (10%):" value={fmtMoney(penaltyUSD, "USD")} bold />
-            </div>
-            <div className="mt-4 text-3xl font-semibold">
-              Maks. licytacja: {fmtNumber(maxBidUSD)} <span className="text-white/80">USD</span>
-            </div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 border">
+            <div className="text-sm font-semibold text-gray-700">Wymagany depozyt</div>
 
-            {/* sanity check small */}
-            <div className="mt-6 text-xs text-white/35">
-              Kontrola: USA(calc)={fmtNumber(totalUSA_USD)} / USA(client)={fmtNumber(totalUSAClient_USD)} (powinny być równe)
+            <div className="mt-4 space-y-2 text-sm text-gray-800">
+              <div>
+                Kara umowna ({(calc.penaltyRate * 100).toFixed(0)}%): {n2(calc.requiredDepositUSD)} USD
+              </div>
+
+              <div className="text-base font-semibold">Do wpłaty: {n2(calc.requiredDepositPLN)} PLN</div>
+
+              <div className="text-xs text-gray-500">Minimalny depozyt: 3300 PLN</div>
             </div>
           </div>
         </div>
+
+        <div className="bg-black text-white rounded-2xl shadow-xl p-8 space-y-6 sticky top-10 h-fit">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-gray-400">Najbliższy port</div>
+            <div className="text-lg font-semibold">{calc.portName}</div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">USA (USD)</div>
+            <div className="space-y-1 text-sm">
+              <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
+              <div>Transport lądowy: {n2(calc.inland)}</div>
+              <div>Transport morski: {n2(calc.ocean)}</div>
+              <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+              <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
+              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">Rotterdam (EUR)</div>
+            <div className="space-y-1 text-sm">
+              <div>Cło: {n2(calc.dutyEUR)}</div>
+              <div>VAT: {n2(calc.vatEUR)}</div>
+              <div>Agencja celna: {n2(CUSTOMS_AGENCY_EUR)}</div>
+              <div className="font-semibold">Razem: {n2(calc.rotterdamTotalEUR)}</div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">Polska (PLN)</div>
+            <div className="space-y-1 text-sm">
+              <div>Transport: {n2(POLAND_FIXED_PLN)}</div>
+              <div>Prowizja: {n2(COMPANY_COMMISSION_PLN)}</div>
+            </div>
+          </div>
+
+          <div className="mt-6 -mx-8 bg-black text-white rounded-2xl p-8 shadow-xl">
+            <div className="text-gray-400 text-sm">Łączny koszt</div>
+            <div className="text-3xl font-bold tracking-tight mt-2">{n2(calc.totalPLN)} PLN</div>
+          </div>
+
+          <div className="mt-6 -mx-8 bg-black text-white rounded-2xl p-8 shadow-xl">
+            <div className="text-xs uppercase tracking-wider text-gray-400">Depozyt 3300 PLN</div>
+            <div className="mt-4 space-y-1 text-sm">
+              <div>Depozyt w USD: {n2(calc.depositUSD)}</div>
+              <div>
+                Kara umowna ({(calc.penaltyRate * 100).toFixed(0)}%): {n2(calc.maxBidUSD * calc.penaltyRate)}
+              </div>
+              <div className="text-lg font-semibold mt-2">Maks. licytacja: {n2(calc.maxBidUSD)} USD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto mt-6 text-center text-[11px] text-gray-500">
+        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od rzeczywistych kosztów.
       </div>
     </div>
   );
