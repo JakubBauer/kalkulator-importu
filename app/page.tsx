@@ -596,8 +596,9 @@ function calcAuctionFee(priceUSD: number) {
   return Math.max(priceUSD * rate, AUCTION_MIN_FEE) + 120;
 }
 
-const INLAND_RATE = 2;
-const INLAND_MIN = 300;
+const INLAND_RATE = 2.3; // 2,3$ za milę
+const INLAND_MIN = 400;  // minimum 400$
+const INLAND_MAX = 2000; // maksimum 2000$
 
 const INSURANCE_RATE = 0.02;
 const INSURANCE_MIN = 200;
@@ -664,7 +665,7 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 export default function Page() {
   // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
   // Zmień na własne.
-  const APP_PASSWORD = "USAImportAuto";
+  const APP_PASSWORD = "ZMIEN_HASLO";
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
   const [authOk, setAuthOk] = useState(false);
   const [authInput, setAuthInput] = useState("");
@@ -772,9 +773,12 @@ export default function Page() {
     const sizeOceanMult = SIZE_MULTIPLIERS[vehicleSize];
     const sizeInlandMult = INLAND_SIZE_MULTIPLIERS[vehicleSize];
 
-    const rawInland = zipCoord ? Math.max(bestMiles * INLAND_RATE, INLAND_MIN) : INLAND_MIN;
-    const inland = rawInland * sizeInlandMult;
-    const ocean = port.ocean * sizeOceanMult;
+    const baseInland = zipCoord ? bestMiles * INLAND_RATE : INLAND_MIN;
+    const inlandPreClamp = Math.max(baseInland, INLAND_MIN) * sizeInlandMult;
+    const inland = Math.min(inlandPreClamp, INLAND_MAX);
+
+    const oceanPreClamp = port.ocean * sizeOceanMult;
+    const ocean = Math.min(oceanPreClamp, 2750); // maksimum 2750$
     const auctionFee = calcAuctionFee(priceUSD);
     const insurance = insuranceEnabled ? Math.max(priceUSD * INSURANCE_RATE, INSURANCE_MIN) : 0;
 
@@ -1092,10 +1096,10 @@ export default function Page() {
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">USA (USD)</div>
             <div className="space-y-1 text-sm">
-              <div>Cena zakupu: {n2(parseNum(vehiclePrice))}</div>
-              <div>Prowizja domu aukcyjnego: {n2(calc.auctionFee)}</div>
-              <div>Transport Lądowy: {n2(calc.inland)}</div>
-              <div>Transport Morski: {n2(calc.ocean)}</div>
+              <div>Auto: {n2(parseNum(vehiclePrice))}</div>
+              <div>Aukcja: {n2(calc.auctionFee)}</div>
+              <div>Lądowy: {n2(calc.inland)}</div>
+              <div>Morski: {n2(calc.ocean)}</div>
               {insuranceEnabled && <div>Ubezpieczenie: {n2(calc.insurance)}</div>}
               <div>Dodatkowe: {n2(parseNum(extraCosts))}</div>
               <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
@@ -1107,7 +1111,7 @@ export default function Page() {
             <div className="space-y-1 text-sm">
               <div>Cło: {n2(calc.dutyEUR)}</div>
               <div>VAT: {n2(calc.vatEUR)}</div>
-              <div>Agencja Celna: {n2(CUSTOMS_AGENCY_EUR)}</div>
+              <div>Agencja: {n2(CUSTOMS_AGENCY_EUR)}</div>
               <div className="font-semibold">Razem: {n2(calc.rotterdamTotalEUR)}</div>
             </div>
           </div>
@@ -1115,8 +1119,8 @@ export default function Page() {
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">Polska (PLN)</div>
             <div className="space-y-1 text-sm">
-              <div>Transport z Rotterdamu: {n2(POLAND_FIXED_PLN)}</div>
-              <div>Prowizja firmy: {n2(COMPANY_COMMISSION_PLN)}</div>
+              <div>Transport: {n2(POLAND_FIXED_PLN)}</div>
+              <div>Prowizja: {n2(COMPANY_COMMISSION_PLN)}</div>
             </div>
           </div>
 
