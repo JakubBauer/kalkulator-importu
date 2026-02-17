@@ -663,7 +663,7 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 
 // ================= COMPONENT =================
 export default function Page() {
-  // Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
+  // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
   // Zmień na własne.
   const APP_PASSWORD = "USAImportAuto";
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
@@ -1093,25 +1093,24 @@ export default function Page() {
             <div className="text-lg font-semibold">{calc.portName}</div>
           </div>
 
-          <div className="border-t border-gray-700 pt-4">
-            <div className="text-xs uppercase text-gray-400">USA (USD)</div>
-            <div className="space-y-1 text-sm">
-              <div>Auto: {n2(parseNum(vehiclePrice))}</div>
-              <div>Aukcja: {n2(calc.auctionFee)}</div>
-              <div>Lądowy: {n2(calc.inland)}</div>
-              <div>Morski: {n2(calc.ocean)}</div>
-              {insuranceEnabled && <div>Ubezpieczenie: {n2(calc.insurance)}</div>}
-              <div>Dodatkowe: {n2(parseNum(extraCosts))}</div>
-              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+          <div className=\"border-t border-gray-700 pt-4\">
+            <div className=\"text-xs uppercase text-gray-400\">USA (USD)</div>
+            <div className=\"space-y-1 text-sm\">
+              <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
+              <div>Transport lądowy: {n2(calc.inland)}</div>
+              <div>Transport morski: {n2(calc.ocean)}</div>
+              <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+              <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
+              <div className=\"font-semibold\">Razem: {n2(calc.usaTotalUSD)}</div>
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-4">
-            <div className="text-xs uppercase text-gray-400">Rotterdam (EUR)</div>
+          <div className=\"border-t border-gray-700 pt-4\">
+            <div className=\"text-xs uppercase text-gray-400\">Rotterdam (EUR)</div>
             <div className="space-y-1 text-sm">
               <div>Cło: {n2(calc.dutyEUR)}</div>
               <div>VAT: {n2(calc.vatEUR)}</div>
-              <div>Agencja: {n2(CUSTOMS_AGENCY_EUR)}</div>
+              <div>Agencja celna: {n2(CUSTOMS_AGENCY_EUR)}</div>
               <div className="font-semibold">Razem: {n2(calc.rotterdamTotalEUR)}</div>
             </div>
           </div>
