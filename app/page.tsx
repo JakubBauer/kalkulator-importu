@@ -13,7 +13,6 @@ type PortKey = keyof typeof PORTS;
 type AuctionHouse = "copart" | "iaai" | "manheim";
 type BuyerType = "private" | "company";
 type VehicleSize = "sedan" | "suv" | "bigsuv" | "oversize";
-
 type ExciseRate = 0.015 | 0.031 | 0.093 | 0.186;
 
 // ================= MNOŻNIKI WIELKOŚCI AUTA =================
@@ -32,10 +31,7 @@ const INLAND_SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
   oversize: 1.8,
 };
 
-// ================= PLACE (COPART / IAAI) =================
-// Autocomplete działa TYLKO na bazie tej listy i jest filtrowany wg wybranego domu aukcyjnego.
-// Na tę chwilę dodałem place Copart z Twojej listy (USA). IAAI dopiszemy analogicznie.
-
+// ================= PLACE (COPART / IAAI / MANHEIM) =================
 type Yard = {
   provider: AuctionHouse;
   state: string;
@@ -44,6 +40,7 @@ type Yard = {
   zip: string;
 };
 
+// ✅ Wklej tu swoją listę YARDS_USA (bez zmian)
 const YARDS_USA: Yard[] = [
   // ===== COPART (USA) — z Twojej listy =====
   { provider: "copart", state: "AL", city: "BIRMINGHAM", label: "Standard", zip: "35023" },
@@ -630,9 +627,6 @@ const YARDS_USA: Yard[] = [
   // ===== END IAAI =====
 ];
 
-// NOTE: Nie używamy \p{...} (Unicode Property Escapes), bo w części środowisk (np. pewne bundlery/wykonania)
-// może to rzucać błędem typu "Invalid regular expression".
-// Zamiast tego usuwamy znaki diakrytyczne po NFD, kasując zakres łączników U+0300–U+036F.
 function normalize(s: string) {
   return s
     .toUpperCase()
@@ -715,9 +709,9 @@ function calcAuctionFee(priceUSD: number) {
   return Math.max(priceUSD * rate, AUCTION_MIN_FEE) + 120;
 }
 
-const INLAND_RATE = 2.3; // 2,3$ za milę
-const INLAND_MIN = 400;  // minimum 400$
-const INLAND_MAX = 2000; // maksimum 2000$
+const INLAND_RATE = 2.3; // $/mile
+const INLAND_MIN = 400;
+const INLAND_MAX = 2000;
 
 const INSURANCE_RATE = 0.02;
 const INSURANCE_MIN = 200;
@@ -728,10 +722,7 @@ const COMPANY_COMMISSION_PLN = 3300;
 
 function n2(x: number) {
   const v = Number.isFinite(x) ? x : 0;
-  return v.toLocaleString("pl-PL", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return v.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function parseNum(v: unknown) {
@@ -757,18 +748,13 @@ async function geocodeZipUS(zip: string) {
   const z = zip?.trim();
   if (!z) return null;
 
-  // Nominatim bywa kapryśny na postalcode=, więc korzystamy z q=
   const url =
     `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=` +
     encodeURIComponent(z);
 
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) return null;
+
   const data = await res.json();
   if (!Array.isArray(data) || data.length === 0) return null;
 
@@ -794,7 +780,7 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
   return (usd * usdPln) / eurPln;
 }
 
-// ================= COMPONENT =================
+// ================= AUTH =================
 const SECRET = "USAImportAuto";
 
 export default function Page() {
@@ -806,9 +792,7 @@ export default function Page() {
     try {
       const saved = localStorage.getItem("app_unlocked");
       if (saved === "true") setUnlocked(true);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
   if (!mounted) return null;
@@ -819,9 +803,7 @@ export default function Page() {
         onUnlock={() => {
           try {
             localStorage.setItem("app_unlocked", "true");
-          } catch {
-            // ignore
-          }
+          } catch {}
           setUnlocked(true);
         }}
       />
@@ -833,9 +815,7 @@ export default function Page() {
       onLogout={() => {
         try {
           localStorage.removeItem("app_unlocked");
-        } catch {
-          // ignore
-        }
+        } catch {}
         setUnlocked(false);
       }}
     />
@@ -849,7 +829,7 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
   const isComposing = useRef(false);
 
   function normalizePass(value: string) {
-    return value.replace(/ /g, " ").trim();
+    return value.replace(/ /g, " ").trim();
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -920,10 +900,7 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
               {error && <p className="mt-2 text-sm text-red-600">Nieprawidłowe hasło.</p>}
             </div>
 
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold"
-            >
+            <button type="submit" className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold">
               Wejdź
             </button>
           </form>
@@ -933,7 +910,12 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
+// ================= MAIN =================
+type TabKey = "kalkulator" | "klient";
+
 function MainApp({ onLogout }: { onLogout: () => void }) {
+  const [tab, setTab] = useState<TabKey>("kalkulator");
+
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
   const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
   const [exciseGrossPln, setExciseGrossPln] = useState("0");
@@ -948,7 +930,19 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
   const yardWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [vehiclePrice, setVehiclePrice] = useState("10000");
+
+  // ✅ JEDNO pole master – to jest "Dodatkowe wydatki (USD)"
   const [extraCosts, setExtraCosts] = useState("0");
+
+  // ✅ Rozbicie dla klienta – SUMA = extraCosts (te same pieniądze)
+  const [breakdown, setBreakdown] = useState({
+    broker: "0",
+    safeLoading: "0",
+    unloading: "0",
+    materials: "0",
+    other: "0",
+  });
+
   const [insuranceEnabled, setInsuranceEnabled] = useState(true);
 
   const [usdPln, setUsdPln] = useState<number | null>(null);
@@ -1011,6 +1005,33 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     setYardOpen(false);
   }, [auctionHouse]);
 
+  // ✅ Gdy klient edytuje rozbicie: aktualizujemy extraCosts (master)
+  function applyBreakdownToExtraCosts(next: typeof breakdown) {
+    const sum =
+      parseNum(next.broker) +
+      parseNum(next.safeLoading) +
+      parseNum(next.unloading) +
+      parseNum(next.materials) +
+      parseNum(next.other);
+    setBreakdown(next);
+    setExtraCosts(String(sum));
+  }
+
+  // ✅ Gdy edytujesz extraCosts w kalkulatorze, nie psujemy rozbicia –
+  //    tylko dopasowujemy "inne", żeby suma dalej była równa extraCosts.
+  useEffect(() => {
+    const total = parseNum(extraCosts);
+    const fixed =
+      parseNum(breakdown.broker) +
+      parseNum(breakdown.safeLoading) +
+      parseNum(breakdown.unloading) +
+      parseNum(breakdown.materials);
+
+    const other = Math.max(0, total - fixed);
+    setBreakdown((b) => ({ ...b, other: String(other) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraCosts]);
+
   const calc = useMemo(() => {
     const priceUSD = parseNum(vehiclePrice);
     const extraUSD = parseNum(extraCosts);
@@ -1039,9 +1060,11 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
 
     const oceanPreClamp = port.ocean * sizeOceanMult;
     const ocean = Math.min(oceanPreClamp, 2750);
+
     const auctionFee = calcAuctionFee(priceUSD);
     const insurance = insuranceEnabled ? Math.max(priceUSD * INSURANCE_RATE, INSURANCE_MIN) : 0;
 
+    // ✅ NIE RUSZAMY LOGIKI – extraUSD dalej wchodzi do usaTotalUSD
     const usaTotalUSD = priceUSD + auctionFee + inland + ocean + insurance + extraUSD;
 
     const usdPlnSafe = usdPln ?? 0;
@@ -1073,6 +1096,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     const usaTotalPLN = usdPlnSafe > 0 ? usaTotalUSD * usdPlnSafe : 0;
     const rotterdamTotalPLN = eurPlnSafe > 0 ? rotterdamTotalEUR * eurPlnSafe : 0;
 
+    // ✅ Koszty PL bez zmian
     const totalPLN = usaTotalPLN + rotterdamTotalPLN + POLAND_FIXED_PLN + COMPANY_COMMISSION_PLN;
 
     const exciseGross = parseNum(exciseGrossPln);
@@ -1082,20 +1106,15 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
 
     const depositMinPLN = 3300;
 
-    const penaltyRateMap: Record<AuctionHouse, number> = {
-      copart: 0.1,
-      iaai: 0.15,
-      manheim: 0.3,
-    };
-
+    const penaltyRateMap: Record<AuctionHouse, number> = { copart: 0.1, iaai: 0.15, manheim: 0.3 };
     const penaltyRate = penaltyRateMap[auctionHouse];
 
     const requiredDepositUSD = Math.max(0, priceUSD * penaltyRate);
-    const requiredDepositPLN = usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
+    const requiredDepositPLN =
+      usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
 
     const depositPLN = depositMinPLN;
     const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
-
     const maxBidUSD = penaltyRate > 0 ? depositUSD / penaltyRate : 0;
 
     return {
@@ -1119,7 +1138,26 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
       requiredDepositUSD,
       requiredDepositPLN,
     };
-  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
+  }, [
+    buyerType,
+    vehiclePrice,
+    extraCosts,
+    insuranceEnabled,
+    vehicleSize,
+    zipCoord,
+    usdPln,
+    eurPln,
+    exciseRate,
+    exciseGrossPln,
+    auctionHouse,
+  ]);
+
+  // ✅ Logika „wchłaniania” (TYLKO w widoku klienta, bez ruszania calc):
+  const absorbedToPrice = useMemo(() => parseNum(breakdown.broker) + parseNum(breakdown.safeLoading), [breakdown]);
+  const absorbedToInland = useMemo(
+    () => parseNum(breakdown.unloading) + parseNum(breakdown.materials) + parseNum(breakdown.other),
+    [breakdown]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
@@ -1136,10 +1174,35 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             </button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
-              <div className="text-sm text-gray-500 mt-1">Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN</div>
+              <div className="text-sm text-gray-500 mt-1">
+                Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN
+              </div>
             </div>
           </div>
 
+          {/* ====== 2 zakładki ====== */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTab("kalkulator")}
+              className={`px-4 py-2 rounded-xl text-sm border transition ${
+                tab === "kalkulator" ? "bg-black text-white border-black" : "bg-white hover:bg-slate-50"
+              }`}
+            >
+              Kalkulator
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("klient")}
+              className={`px-4 py-2 rounded-xl text-sm border transition ${
+                tab === "klient" ? "bg-black text-white border-black" : "bg-white hover:bg-slate-50"
+              }`}
+            >
+              Rozliczenie dla klienta
+            </button>
+          </div>
+
+          {/* ====== WSPÓLNE POLA (zostają te same) ====== */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-semibold text-gray-600">Rodzaj klienta</label>
@@ -1194,9 +1257,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
                 setSelectedYard(null);
 
                 const maybeZip = v.replace(/[^0-9]/g, "").slice(0, 5);
-                if (maybeZip.length === 5) {
-                  setZip(maybeZip);
-                }
+                if (maybeZip.length === 5) setZip(maybeZip);
 
                 setYardOpen(true);
               }}
@@ -1228,7 +1289,9 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             )}
 
             {selectedYard && (
-              <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
+              <div className="text-xs text-gray-500 mt-2">
+                Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}
+              </div>
             )}
 
             {yardOpen && (
@@ -1245,7 +1308,11 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-semibold text-gray-600">ZIP</label>
-              <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={zip} onChange={(e) => setZip(e.target.value)} />
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+              />
             </div>
             <div>
               <label className="text-sm font-semibold text-gray-600">Cena zakupu (USD)</label>
@@ -1262,11 +1329,87 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             <span className="text-sm">Ubezpieczenie transportu</span>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
-            <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} />
-          </div>
+          {/* ====== Zakładka: KALKULATOR ====== */}
+          {tab === "kalkulator" && (
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={extraCosts}
+                onChange={(e) => setExtraCosts(e.target.value)}
+              />
+              <div className="mt-2 text-xs text-gray-500">
+                Ta kwota jest wspólna dla obu zakładek. W „Rozliczeniu dla klienta” zostanie rozbita na pozycje i „wchłonięta” w inne linie.
+              </div>
+            </div>
+          )}
 
+          {/* ====== Zakładka: ROZLICZENIE DLA KLIENTA ====== */}
+          {tab === "klient" && (
+            <div className="bg-white rounded-2xl shadow-xl p-6 border space-y-3">
+              <div className="text-sm font-semibold text-gray-700">Rozbicie dodatkowych wydatków (USD)</div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600">Opłata brokerska</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                    value={breakdown.broker}
+                    onChange={(e) => applyBreakdownToExtraCosts({ ...breakdown, broker: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-600">Bezpieczny załadunek</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                    value={breakdown.safeLoading}
+                    onChange={(e) => applyBreakdownToExtraCosts({ ...breakdown, safeLoading: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-600">Rozładunek</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                    value={breakdown.unloading}
+                    onChange={(e) => applyBreakdownToExtraCosts({ ...breakdown, unloading: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-600">Materiały zabezpieczające</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                    value={breakdown.materials}
+                    onChange={(e) => applyBreakdownToExtraCosts({ ...breakdown, materials: e.target.value })}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-600">Inne</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                    value={breakdown.other}
+                    onChange={(e) => applyBreakdownToExtraCosts({ ...breakdown, other: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-3 bg-slate-50 flex items-center justify-between">
+                <span className="text-sm text-gray-600">Suma dodatkowych wydatków</span>
+                <span className="text-sm font-semibold">{n2(parseNum(extraCosts))} USD</span>
+              </div>
+
+              <div className="text-[11px] text-gray-500">
+                W widoku klienta ta suma nie pojawia się jako osobna linia „Dodatkowe koszty”. Zostaje wchłonięta:
+                <br />• do „Cena z prowizją”: {n2(absorbedToPrice)} USD
+                <br />• do „Transport lądowy”: {n2(absorbedToInland)} USD
+              </div>
+            </div>
+          )}
+
+          {/* ====== AKCYZA (bez zmian) ====== */}
           <div className="pt-2">
             <div className="text-sm font-semibold text-gray-700">Akcyza (PL)</div>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -1297,6 +1440,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             <div className="mt-2 text-xs text-gray-500">VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN</div>
           </div>
 
+          {/* ====== DEPOZYT (bez zmian) ====== */}
           <div className="bg-white rounded-2xl shadow-xl p-6 border">
             <div className="text-sm font-semibold text-gray-700">Wymagany depozyt</div>
 
@@ -1312,6 +1456,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
 
+        {/* ====== PANEL PODSUMOWANIA (calc wspólny) ====== */}
         <div className="bg-black text-white rounded-2xl shadow-xl p-8 space-y-6 sticky top-10 h-fit">
           <div>
             <div className="text-xs uppercase tracking-wider text-gray-400">Najbliższy port</div>
@@ -1320,14 +1465,33 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
 
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">USA (USD)</div>
-            <div className="space-y-1 text-sm">
-              <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
-              <div>Transport lądowy: {n2(calc.inland)}</div>
-              <div>Transport morski: {n2(calc.ocean)}</div>
-              <div>Ubezpieczenie: {n2(calc.insurance)}</div>
-              <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
-              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
-            </div>
+
+            {/* === Widok KALKULATOR === */}
+            {tab === "kalkulator" && (
+              <div className="space-y-1 text-sm">
+                <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
+                <div>Transport lądowy: {n2(calc.inland)}</div>
+                <div>Transport morski: {n2(calc.ocean)}</div>
+                <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+                <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
+                <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+              </div>
+            )}
+
+            {/* === Widok KLIENT === */}
+            {tab === "klient" && (
+              <div className="space-y-1 text-sm">
+                <div>
+                  Cena z prowizją domu aukcyjnego:{" "}
+                  {n2(parseNum(vehiclePrice) + calc.auctionFee + absorbedToPrice)}
+                </div>
+                <div>Transport lądowy: {n2(calc.inland + absorbedToInland)}</div>
+                <div>Transport morski: {n2(calc.ocean)}</div>
+                <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+                {/* ✅ brak "Dodatkowe koszty" */}
+                <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-gray-700 pt-4">
