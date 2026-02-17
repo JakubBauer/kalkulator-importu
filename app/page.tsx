@@ -957,9 +957,7 @@ export default function Page() {
     const exciseVatPl = exciseGross > 0 ? exciseGross - exciseNet : 0;
     const exciseAmount = Math.max(0, exciseNet * exciseRate);
 
-    // ===== DEPOZYT I MAKS. LICYTACJA =====
-    const depositPLN = 3300;
-    const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
+    const depositMinPLN = 3300;
 
     const penaltyRateMap: Record<AuctionHouse, number> = {
       copart: 0.10,
@@ -968,6 +966,13 @@ export default function Page() {
     };
 
     const penaltyRate = penaltyRateMap[auctionHouse];
+
+    const requiredDepositUSD = Math.max(0, priceUSD * penaltyRate);
+    const requiredDepositPLN = usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
+
+    const depositPLN = depositMinPLN;
+    const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
+
     const maxBidUSD = penaltyRate > 0 ? depositUSD / penaltyRate : 0;
 
     return {
@@ -988,6 +993,8 @@ export default function Page() {
       depositUSD,
       penaltyRate,
       maxBidUSD,
+      requiredDepositUSD,
+      requiredDepositPLN,
     };
   }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
 
@@ -1241,8 +1248,20 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="mt-2 text-xs text-gray-500">
-              VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN
+            <div className="mt-2 text-xs text-gray-500">VAT PL (23%) od tej wartości: {n2(calc.exciseVatPl)} PLN</div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 border">
+            <div className="text-sm font-semibold text-gray-700">Wymagany depozyt</div>
+
+            <div className="mt-4 space-y-2 text-sm text-gray-800">
+              <div>
+                Kara umowna ({(calc.penaltyRate * 100).toFixed(0)}%): {n2(calc.requiredDepositUSD)} USD
+              </div>
+
+              <div className="text-base font-semibold">Do wpłaty: {n2(calc.requiredDepositPLN)} PLN</div>
+
+              <div className="text-xs text-gray-500">Minimalny depozyt: 3300 PLN</div>
             </div>
           </div>
         </div>
