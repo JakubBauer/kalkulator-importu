@@ -33,9 +33,6 @@ const INLAND_SIZE_MULTIPLIERS: Record<VehicleSize, number> = {
 };
 
 // ================= PLACE (COPART / IAAI) =================
-// Autocomplete działa TYLKO na bazie tej listy i jest filtrowany wg wybranego domu aukcyjnego.
-// Na tę chwilę dodałem place Copart z Twojej listy (USA). IAAI dopiszemy analogicznie.
-
 type Yard = {
   provider: AuctionHouse;
   state: string;
@@ -44,6 +41,7 @@ type Yard = {
   zip: string;
 };
 
+// (u Ciebie pusta lista — wkleisz sam)
 const YARDS_USA: Yard[] = [
   // ===== COPART (USA) — z Twojej listy =====
   { provider: "copart", state: "AL", city: "BIRMINGHAM", label: "Standard", zip: "35023" },
@@ -629,10 +627,8 @@ const YARDS_USA: Yard[] = [
 
   // ===== END IAAI =====
 ];
-
 // NOTE: Nie używamy \p{...} (Unicode Property Escapes), bo w części środowisk (np. pewne bundlery/wykonania)
 // może to rzucać błędem typu "Invalid regular expression".
-// Zamiast tego usuwamy znaki diakrytyczne po NFD, kasując zakres łączników U+0300–U+036F.
 function normalize(s: string) {
   return s
     .toUpperCase()
@@ -716,7 +712,7 @@ function calcAuctionFee(priceUSD: number) {
 }
 
 const INLAND_RATE = 2.3; // 2,3$ za milę
-const INLAND_MIN = 400;  // minimum 400$
+const INLAND_MIN = 400; // minimum 400$
 const INLAND_MAX = 2000; // maksimum 2000$
 
 const INSURANCE_RATE = 0.02;
@@ -757,17 +753,11 @@ async function geocodeZipUS(zip: string) {
   const z = zip?.trim();
   if (!z) return null;
 
-  // Nominatim bywa kapryśny na postalcode=, więc korzystamy z q=
   const url =
     `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=` +
     encodeURIComponent(z);
 
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) return null;
   const data = await res.json();
   if (!Array.isArray(data) || data.length === 0) return null;
@@ -792,6 +782,58 @@ async function fetchNBPRate(code: string) {
 function usdToEur(usd: number, usdPln: number, eurPln: number) {
   if (!(usdPln > 0) || !(eurPln > 0)) return 0;
   return (usd * usdPln) / eurPln;
+}
+
+// ================= ROZBICIE "DODATKOWE WYDATKI" (WERSJA KLIENTA) =================
+// 1) Suma udziałów musi dawać 1.00
+// 2) Część kwoty "wchłaniamy" w: Cena z prowizją, Transport lądowy, Transport morski
+const CLIENT_EXTRA_SPLIT = {
+  absorbedIntoAuctionBundle: 0.2, // idzie do "Cena z prowizją domu aukcyjnego"
+  absorbedIntoInland: 0.2, // idzie do "Transport lądowy"
+  absorbedIntoOcean: 0.2, // idzie do "Transport morski"
+
+  brokerFee: 0.15, // Opłata brokerska
+  safeLoading: 0.1, // Bezpieczny załadunek
+  unloading: 0.1, // Rozładunek
+  securingMaterials: 0.1, // Materiały zabezpieczające
+  usaService: 0.15, // Obsługa USA
+} as const;
+
+function round2(x: number) {
+  return Math.round((Number.isFinite(x) ? x : 0) * 100) / 100;
+}
+
+function splitExtraUSD(extraUSD: number) {
+  const e = Math.max(0, extraUSD);
+
+  // surowe
+  const raw = {
+    absorbedAuction: e * CLIENT_EXTRA_SPLIT.absorbedIntoAuctionBundle,
+    absorbedInland: e * CLIENT_EXTRA_SPLIT.absorbedIntoInland,
+    absorbedOcean: e * CLIENT_EXTRA_SPLIT.absorbedIntoOcean,
+    brokerFee: e * CLIENT_EXTRA_SPLIT.brokerFee,
+    safeLoading: e * CLIENT_EXTRA_SPLIT.safeLoading,
+    unloading: e * CLIENT_EXTRA_SPLIT.unloading,
+    securingMaterials: e * CLIENT_EXTRA_SPLIT.securingMaterials,
+    usaService: e * CLIENT_EXTRA_SPLIT.usaService,
+  };
+
+  // zaokrąglamy do 0.01 i pilnujemy, żeby suma była IDEALNIE równa extraUSD
+  const keys = Object.keys(raw) as (keyof typeof raw)[];
+  const out: Record<keyof typeof raw, number> = {} as any;
+
+  let sum = 0;
+  for (const k of keys) {
+    out[k] = round2(raw[k]);
+    sum += out[k];
+  }
+
+  // korekta różnicy na ostatniej pozycji (żeby nie pływało przez zaokrąglenia)
+  const diff = round2(e - sum);
+  const lastKey = keys[keys.length - 1];
+  out[lastKey] = round2(out[lastKey] + diff);
+
+  return out;
 }
 
 // ================= COMPONENT =================
@@ -849,7 +891,7 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
   const isComposing = useRef(false);
 
   function normalizePass(value: string) {
-    return value.replace(/ /g, " ").trim();
+    return value.replace(/ /g, " ").trim();
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -920,10 +962,7 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
               {error && <p className="mt-2 text-sm text-red-600">Nieprawidłowe hasło.</p>}
             </div>
 
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold"
-            >
+            <button type="submit" className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold">
               Wejdź
             </button>
           </form>
@@ -933,7 +972,11 @@ function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
+type TabKey = "calculator" | "client";
+
 function MainApp({ onLogout }: { onLogout: () => void }) {
+  const [tab, setTab] = useState<TabKey>("calculator");
+
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
   const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
   const [exciseGrossPln, setExciseGrossPln] = useState("0");
@@ -1091,20 +1134,51 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     const penaltyRate = penaltyRateMap[auctionHouse];
 
     const requiredDepositUSD = Math.max(0, priceUSD * penaltyRate);
-    const requiredDepositPLN = usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
+    const requiredDepositPLN =
+      usdPlnSafe > 0 ? Math.max(depositMinPLN, requiredDepositUSD * usdPlnSafe) : depositMinPLN;
 
     const depositPLN = depositMinPLN;
     const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
 
     const maxBidUSD = penaltyRate > 0 ? depositUSD / penaltyRate : 0;
 
+    // ====== rozbicie extra (klient) ======
+    const extraBreak = splitExtraUSD(extraUSD);
+    const displayAuctionBundleUSD = priceUSD + auctionFee + extraBreak.absorbedAuction;
+    const displayInlandUSD = inland + extraBreak.absorbedInland;
+    const displayOceanUSD = ocean + extraBreak.absorbedOcean;
+
+    // kontrolnie: suma musi zostać taka sama
+    const clientUsaSumUSD =
+      displayAuctionBundleUSD +
+      displayInlandUSD +
+      displayOceanUSD +
+      insurance +
+      extraBreak.brokerFee +
+      extraBreak.safeLoading +
+      extraBreak.unloading +
+      extraBreak.securingMaterials +
+      extraBreak.usaService;
+
     return {
       portName: port.name,
+
+      // bazowe (kalkulator)
       auctionFee,
       inland,
       ocean,
       insurance,
       usaTotalUSD,
+
+      // klient (rozbicie)
+      extraUSD,
+      extraBreak,
+      displayAuctionBundleUSD,
+      displayInlandUSD,
+      displayOceanUSD,
+      clientUsaSumUSD,
+
+      // reszta bez zmian
       dutyEUR,
       vatEUR,
       rotterdamTotalEUR,
@@ -1119,7 +1193,19 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
       requiredDepositUSD,
       requiredDepositPLN,
     };
-  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
+  }, [
+    buyerType,
+    vehiclePrice,
+    extraCosts,
+    insuranceEnabled,
+    vehicleSize,
+    zipCoord,
+    usdPln,
+    eurPln,
+    exciseRate,
+    exciseGrossPln,
+    auctionHouse,
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
@@ -1136,8 +1222,32 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             </button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
-              <div className="text-sm text-gray-500 mt-1">Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN</div>
+              <div className="text-sm text-gray-500 mt-1">
+                Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN
+              </div>
             </div>
+          </div>
+
+          {/* ====== TABS (2 zakładki na górze) ====== */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTab("calculator")}
+              className={`px-4 py-2 rounded-xl border text-sm font-semibold transition ${
+                tab === "calculator" ? "bg-black text-white border-black" : "bg-white hover:bg-slate-50"
+              }`}
+            >
+              Kalkulator
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("client")}
+              className={`px-4 py-2 rounded-xl border text-sm font-semibold transition ${
+                tab === "client" ? "bg-black text-white border-black" : "bg-white hover:bg-slate-50"
+              }`}
+            >
+              Rozliczenie dla klienta
+            </button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -1228,7 +1338,9 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             )}
 
             {selectedYard && (
-              <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
+              <div className="text-xs text-gray-500 mt-2">
+                Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}
+              </div>
             )}
 
             {yardOpen && (
@@ -1245,7 +1357,11 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-semibold text-gray-600">ZIP</label>
-              <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={zip} onChange={(e) => setZip(e.target.value)} />
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+              />
             </div>
             <div>
               <label className="text-sm font-semibold text-gray-600">Cena zakupu (USD)</label>
@@ -1262,10 +1378,17 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             <span className="text-sm">Ubezpieczenie transportu</span>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
-            <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} />
-          </div>
+          {/* ====== RÓŻNICA MIĘDZY ZAKŁADKAMI: INPUT "Dodatkowe wydatki" tylko w Kalkulatorze ====== */}
+          {tab === "calculator" && (
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
+              <input
+                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
+                value={extraCosts}
+                onChange={(e) => setExtraCosts(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="pt-2">
             <div className="text-sm font-semibold text-gray-700">Akcyza (PL)</div>
@@ -1312,6 +1435,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
 
+        {/* ====== PANEL PO PRAWEJ (jak na screenie) ====== */}
         <div className="bg-black text-white rounded-2xl shadow-xl p-8 space-y-6 sticky top-10 h-fit">
           <div>
             <div className="text-xs uppercase tracking-wider text-gray-400">Najbliższy port</div>
@@ -1320,14 +1444,38 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
 
           <div className="border-t border-gray-700 pt-4">
             <div className="text-xs uppercase text-gray-400">USA (USD)</div>
-            <div className="space-y-1 text-sm">
-              <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
-              <div>Transport lądowy: {n2(calc.inland)}</div>
-              <div>Transport morski: {n2(calc.ocean)}</div>
-              <div>Ubezpieczenie: {n2(calc.insurance)}</div>
-              <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
-              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
-            </div>
+
+            {/* ====== ZAKŁADKA: KALKULATOR ====== */}
+            {tab === "calculator" && (
+              <div className="space-y-1 text-sm">
+                <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
+                <div>Transport lądowy: {n2(calc.inland)}</div>
+                <div>Transport morski: {n2(calc.ocean)}</div>
+                <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+                <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
+                <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
+              </div>
+            )}
+
+            {/* ====== ZAKŁADKA: ROZLICZENIE DLA KLIENTA ====== */}
+            {tab === "client" && (
+              <div className="space-y-1 text-sm">
+                <div>Cena z prowizją domu aukcyjnego: {n2(calc.displayAuctionBundleUSD)}</div>
+                <div>Transport lądowy: {n2(calc.displayInlandUSD)}</div>
+                <div>Transport morski: {n2(calc.displayOceanUSD)}</div>
+                <div>Ubezpieczenie: {n2(calc.insurance)}</div>
+
+                <div className="pt-2"></div>
+
+                <div>Opłata brokerska: {n2(calc.extraBreak.brokerFee)}</div>
+                <div>Bezpieczny załadunek: {n2(calc.extraBreak.safeLoading)}</div>
+                <div>Rozładunek: {n2(calc.extraBreak.unloading)}</div>
+                <div>Materiały zabezpieczające: {n2(calc.extraBreak.securingMaterials)}</div>
+                <div>Obsługa USA: {n2(calc.extraBreak.usaService)}</div>
+
+                <div className="font-semibold">Razem: {n2(calc.clientUsaSumUSD)}</div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-gray-700 pt-4">
@@ -1367,7 +1515,8 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
       </div>
 
       <div className="max-w-6xl mx-auto mt-6 text-center text-[11px] text-gray-500">
-        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od rzeczywistych kosztów.
+        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od
+        rzeczywistych kosztów.
       </div>
     </div>
   );
