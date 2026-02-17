@@ -798,7 +798,7 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 export default function Page() {
   // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
   // Zmień na własne.
-  const APP_PASSWORD = "USAImporAuto";
+  const APP_PASSWORD = "USAImportAuto";
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
   const [authOk, setAuthOk] = useState(false);
   const [authInput, setAuthInput] = useState("");
