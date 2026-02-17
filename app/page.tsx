@@ -795,15 +795,146 @@ function usdToEur(usd: number, usdPln: number, eurPln: number) {
 }
 
 // ================= COMPONENT =================
+const SECRET = "USAImportAuto";
+
 export default function Page() {
-  // ⚠️ Prosta ochrona hasłem (wariant 2) – hasło da się podejrzeć w kodzie strony.
-  // Zmień na własne.
-  const APP_PASSWORD = "USAImportAuto";
+  const [unlocked, setUnlocked] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = localStorage.getItem("app_unlocked");
+      if (saved === "true") setUnlocked(true);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  if (!mounted) return null;
+
+  if (!unlocked) {
+    return (
+      <PasswordScreen
+        onUnlock={() => {
+          try {
+            localStorage.setItem("app_unlocked", "true");
+          } catch {
+            // ignore
+          }
+          setUnlocked(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <MainApp
+      onLogout={() => {
+        try {
+          localStorage.removeItem("app_unlocked");
+        } catch {
+          // ignore
+        }
+        setUnlocked(false);
+      }}
+    />
+  );
+}
+
+function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState(false);
+  const isComposing = useRef(false);
+
+  function normalizePass(value: string) {
+    return value.replace(/ /g, " ").trim();
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const cleaned = normalizePass(password);
+    if (cleaned === SECRET) {
+      setError(false);
+      onUnlock();
+    } else {
+      setError(true);
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="text-2xl font-bold tracking-tight">Dostęp chroniony</div>
+          <p className="mt-1 text-sm text-gray-600">Wpisz hasło, aby uruchomić kalkulator.</p>
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="app-password" className="mb-1 block text-sm font-semibold text-gray-600">
+                Hasło
+              </label>
+
+              <div className="relative">
+                <input
+                  id="app-password"
+                  name="app_unlock"
+                  type={show ? "text" : "password"}
+                  inputMode="text"
+                  autoComplete="current-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="w-full rounded-xl border p-3 pr-24 focus:outline-none focus:ring-2 focus:ring-black"
+                  value={password}
+                  onCompositionStart={() => (isComposing.current = true)}
+                  onCompositionEnd={(e) => {
+                    isComposing.current = false;
+                    setPassword((e.target as HTMLInputElement).value);
+                    setError(false);
+                  }}
+                  onChange={(e) => {
+                    if (isComposing.current) return;
+                    setPassword(e.target.value);
+                    setError(false);
+                  }}
+                  onPaste={(e) => {
+                    requestAnimationFrame(() => {
+                      setPassword((e.target as HTMLInputElement).value);
+                      setError(false);
+                    });
+                  }}
+                  placeholder="••••••••"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShow((s) => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                >
+                  {show ? "Ukryj" : "Pokaż"}
+                </button>
+              </div>
+
+              {error && <p className="mt-2 text-sm text-red-600">Nieprawidłowe hasło.</p>}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-black py-3 text-white transition hover:opacity-90 font-semibold"
+            >
+              Wejdź
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MainApp({ onLogout }: { onLogout: () => void }) {
   const [buyerType, setBuyerType] = useState<BuyerType>("private");
-  const [authOk, setAuthOk] = useState(false);
-  const [authInput, setAuthInput] = useState("");
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [exciseRate, setExciseRate] = useState<ExciseRate>(0.031);
   const [exciseGrossPln, setExciseGrossPln] = useState("0");
   const [auctionHouse, setAuctionHouse] = useState<AuctionHouse>("copart");
@@ -826,14 +957,6 @@ export default function Page() {
   const [zipCoord, setZipCoord] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
-    // zapamiętanie hasła tylko na czas sesji (zamykanie karty czyści)
-    try {
-      const saved = sessionStorage.getItem("bobrauto_auth") === "1";
-      if (saved) setAuthOk(true);
-    } catch {
-      // ignore
-    }
-
     (async () => {
       const [u, e] = await Promise.all([fetchNBPRate("USD"), fetchNBPRate("EUR")]);
       setUsdPln(u);
@@ -863,7 +986,6 @@ export default function Page() {
 
   const suggestions = useMemo(() => searchYards(yardQuery, auctionHouse, 12), [yardQuery, auctionHouse]);
 
-  // zamykanie listy po kliknięciu poza komponentem
   useEffect(() => {
     if (!yardOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -961,9 +1083,9 @@ export default function Page() {
     const depositMinPLN = 3300;
 
     const penaltyRateMap: Record<AuctionHouse, number> = {
-      copart: 0.10,
+      copart: 0.1,
       iaai: 0.15,
-      manheim: 0.30,
+      manheim: 0.3,
     };
 
     const penaltyRate = penaltyRateMap[auctionHouse];
@@ -999,85 +1121,6 @@ export default function Page() {
     };
   }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
 
-  const handleLogin = () => {
-    const ok = authInput === APP_PASSWORD;
-    if (!ok) {
-      setAuthError("Nieprawidłowe hasło");
-      setAuthOk(false);
-      return;
-    }
-    setAuthError(null);
-    setAuthOk(true);
-    try {
-      sessionStorage.setItem("bobrauto_auth", "1");
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleLogout = () => {
-    setAuthOk(false);
-    setAuthInput("");
-    setAuthError(null);
-    try {
-      sessionStorage.removeItem("bobrauto_auth");
-    } catch {
-      // ignore
-    }
-  };
-
-  if (!authOk) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-2xl font-bold tracking-tight">Dostęp chroniony</div>
-          <div className="text-sm text-gray-500 mt-1">Wpisz hasło, aby uruchomić kalkulator.</div>
-
-          <div className="mt-6 space-y-2">
-            <label className="text-sm font-semibold text-gray-600">Hasło</label>
-            <div className="relative">
-              <input
-                className="w-full rounded-xl border p-3 pr-24 focus:ring-2 focus:ring-black"
-                type={showPassword ? "text" : "password"}
-                name="app-password"
-                id="app-password"
-                autoComplete="current-password"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                value={authInput}
-                onChange={(e) => {
-                  setAuthInput(e.target.value);
-                  setAuthError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleLogin();
-                }}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-600 hover:text-black"
-              >
-                {showPassword ? "Ukryj" : "Pokaż"}
-              </button>
-            </div>
-            {authError && <div className="text-sm text-red-600">{authError}</div>}
-          </div>
-
-          <button
-            type="button"
-            className="mt-5 w-full rounded-xl bg-black text-white py-3 font-semibold hover:opacity-90"
-            onClick={handleLogin}
-          >
-            Wejdź
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 py-10 px-4">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-8">
@@ -1085,7 +1128,7 @@ export default function Page() {
           <div className="flex items-start justify-between gap-4">
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={onLogout}
               className="ml-auto text-xs rounded-lg border px-3 py-2 hover:bg-slate-50"
               title="Wyloguj"
             >
@@ -1093,9 +1136,7 @@ export default function Page() {
             </button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Kalkulator Importu USA → Rotterdam → Polska</h1>
-              <div className="text-sm text-gray-500 mt-1">
-                Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN
-              </div>
+              <div className="text-sm text-gray-500 mt-1">Kursy NBP: USD {usdPln ? n2(usdPln) : "..."} PLN · EUR {eurPln ? n2(eurPln) : "..."} PLN</div>
             </div>
           </div>
 
@@ -1152,7 +1193,6 @@ export default function Page() {
                 setYardQuery(v);
                 setSelectedYard(null);
 
-                // Jeśli ktoś wpisze ZIP w polu "Plac", traktujemy to jako ZIP (bez wyboru placu)
                 const maybeZip = v.replace(/[^0-9]/g, "").slice(0, 5);
                 if (maybeZip.length === 5) {
                   setZip(maybeZip);
@@ -1191,7 +1231,6 @@ export default function Page() {
               <div className="text-xs text-gray-500 mt-2">Wybrano: {yardDisplay(selectedYard)} · ZIP {selectedYard.zip}</div>
             )}
 
-            {/* szybki przycisk do schowania listy (np. na mobile) */}
             {yardOpen && (
               <button
                 type="button"
@@ -1206,11 +1245,7 @@ export default function Page() {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-semibold text-gray-600">ZIP</label>
-              <input
-                className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
-                value={zip}
-                onChange={(e) => setZip(e.target.value)}
-              />
+              <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={zip} onChange={(e) => setZip(e.target.value)} />
             </div>
             <div>
               <label className="text-sm font-semibold text-gray-600">Cena zakupu (USD)</label>
@@ -1229,14 +1264,9 @@ export default function Page() {
 
           <div>
             <label className="text-sm font-semibold text-gray-600">Dodatkowe wydatki (USD)</label>
-            <input
-              className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black"
-              value={extraCosts}
-              onChange={(e) => setExtraCosts(e.target.value)}
-            />
+            <input className="mt-1 w-full rounded-xl border p-2 focus:ring-2 focus:ring-black" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} />
           </div>
 
-          {/* AKCYZA */}
           <div className="pt-2">
             <div className="text-sm font-semibold text-gray-700">Akcyza (PL)</div>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -1337,8 +1367,7 @@ export default function Page() {
       </div>
 
       <div className="max-w-6xl mx-auto mt-6 text-center text-[11px] text-gray-500">
-        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od
-        rzeczywistych kosztów.
+        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od rzeczywistych kosztów.
       </div>
     </div>
   );
