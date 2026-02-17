@@ -10,7 +10,7 @@ const PORTS = {
 } as const;
 
 type PortKey = keyof typeof PORTS;
-type AuctionHouse = "copart" | "iaai";
+type AuctionHouse = "copart" | "iaai" | "manheim";
 type BuyerType = "private" | "company";
 type VehicleSize = "sedan" | "suv" | "bigsuv" | "oversize";
 
@@ -305,6 +305,126 @@ const YARDS_USA: Yard[] = [
   { provider: "copart", state: "WI", city: "MILWAUKEE SOUTH", label: "Standard", zip: "53132" },
 
   { provider: "copart", state: "WY", city: "CASPER", label: "Standard", zip: "82601" },
+
+  // ===== MANHEIM (USA) — z Twojej listy =====
+  { provider: "manheim", state: "AL", city: "BIRMINGHAM", label: "Manheim", zip: "35217" },
+  { provider: "manheim", state: "AL", city: "VALLEY", label: "4 Star Auto Auction Powered by Manheim", zip: "36854" },
+
+  { provider: "manheim", state: "AZ", city: "PHOENIX", label: "Manheim", zip: "85353" },
+  { provider: "manheim", state: "AZ", city: "TUCSON", label: "Manheim", zip: "85756" },
+
+  { provider: "manheim", state: "AR", city: "CONWAY", label: "Manheim Little Rock", zip: "72032" },
+
+  { provider: "manheim", state: "CA", city: "ANAHEIM", label: "Manheim California", zip: "92807" },
+  { provider: "manheim", state: "CA", city: "FRESNO", label: "Manheim Fresno", zip: "93706" },
+  { provider: "manheim", state: "CA", city: "OCEANSIDE", label: "Manheim Oceanside", zip: "92057" },
+  { provider: "manheim", state: "CA", city: "RIVERSIDE", label: "Manheim Riverside", zip: "92504" },
+  { provider: "manheim", state: "CA", city: "HAYWARD", label: "Manheim San Francisco Bay", zip: "94544" },
+  { provider: "manheim", state: "CA", city: "FONTANA", label: "Manheim Southern California", zip: "92337" },
+
+  { provider: "manheim", state: "CO", city: "AURORA", label: "Manheim Denver", zip: "80011" },
+
+  { provider: "manheim", state: "FL", city: "ORLANDO", label: "Manheim Central Florida", zip: "32824" },
+  { provider: "manheim", state: "FL", city: "DAYTONA BEACH", label: "Manheim Daytona Beach", zip: "32124" },
+  { provider: "manheim", state: "FL", city: "DAVIE", label: "Manheim Fort Lauderdale", zip: "33314" },
+  { provider: "manheim", state: "FL", city: "FORT MYERS", label: "Manheim Fort Myers", zip: "33916" },
+  { provider: "manheim", state: "FL", city: "JACKSONVILLE", label: "Manheim Jacksonville", zip: "32219" },
+  { provider: "manheim", state: "FL", city: "LAKELAND", label: "Manheim Lakeland", zip: "33809" },
+  { provider: "manheim", state: "FL", city: "OCOEE", label: "Manheim Orlando", zip: "34761" },
+  { provider: "manheim", state: "FL", city: "WEST PALM BEACH", label: "Manheim Palm Beach", zip: "33411" },
+  { provider: "manheim", state: "FL", city: "PENSACOLA", label: "Manheim Pensacola", zip: "32505" },
+  { provider: "manheim", state: "FL", city: "CLEARWATER", label: "Manheim St. Pete", zip: "33762" },
+  { provider: "manheim", state: "FL", city: "TALLAHASSEE", label: "Manheim Tallahassee", zip: "32305" },
+  { provider: "manheim", state: "FL", city: "TAMPA", label: "Manheim Tampa", zip: "33619" },
+
+  { provider: "manheim", state: "GA", city: "COLLEGE PARK", label: "Manheim Atlanta", zip: "30349" },
+  { provider: "manheim", state: "GA", city: "ATLANTA", label: "MyCentralAuction", zip: "30328" },
+  { provider: "manheim", state: "GA", city: "ATLANTA", label: "Manheim Georgia", zip: "30331" },
+  { provider: "manheim", state: "GA", city: "KINGSTON", label: "Rome Auto Auction Powered by Manheim", zip: "30145" },
+
+  { provider: "manheim", state: "IL", city: "MATTESON", label: "Manheim Chicago", zip: "60443" },
+
+  { provider: "manheim", state: "IN", city: "INDIANAPOLIS", label: "Manheim Indianapolis", zip: "46239" },
+  { provider: "manheim", state: "IN", city: "CLARKSVILLE", label: "Manheim Louisville", zip: "47129" },
+
+  { provider: "manheim", state: "IA", city: "STUART", label: "Manheim Iowa", zip: "50250" },
+
+  { provider: "manheim", state: "KS", city: "OLATHE", label: "Olathe Mobile Auction", zip: "66061" },
+  { provider: "manheim", state: "KS", city: "WICHITA", label: "Wichita Mobile Auction", zip: "67207" },
+
+  { provider: "manheim", state: "LA", city: "SCOTT", label: "Manheim Lafayette", zip: "70583" },
+  { provider: "manheim", state: "LA", city: "SLIDELL", label: "Manheim New Orleans", zip: "70460" },
+
+  { provider: "manheim", state: "MD", city: "ELKRIDGE", label: "Manheim Baltimore-Washington", zip: "21075" },
+  { provider: "manheim", state: "MD", city: "BELCAMP", label: "Manheim Maryland", zip: "21017" },
+
+  { provider: "manheim", state: "MA", city: "NORTH DIGHTON", label: "Manheim New England", zip: "02764" },
+
+  { provider: "manheim", state: "MI", city: "CARLETON", label: "Manheim Detroit", zip: "48117" },
+  { provider: "manheim", state: "MI", city: "MT. MORRIS", label: "Manheim Flint", zip: "48458" },
+
+  { provider: "manheim", state: "MN", city: "MAPLE GROVE", label: "Manheim Minneapolis", zip: "55369" },
+  { provider: "manheim", state: "MN", city: "SHAKOPEE", label: "Manheim Northstar Minnesota", zip: "55379" },
+
+  { provider: "manheim", state: "MS", city: "HATTIESBURG", label: "Manheim Mississippi", zip: "39402" },
+
+  { provider: "manheim", state: "MO", city: "KANSAS CITY", label: "Manheim Kansas City", zip: "64161" },
+  { provider: "manheim", state: "MO", city: "BRIDGETON", label: "Manheim St. Louis", zip: "63044" },
+
+  { provider: "manheim", state: "NE", city: "OMAHA", label: "Manheim Omaha", zip: "68138" },
+
+  { provider: "manheim", state: "NV", city: "LAS VEGAS", label: "Manheim Nevada", zip: "89165" },
+
+  { provider: "manheim", state: "NH", city: "SOMERSWORTH", label: "Manheim New Hampshire", zip: "03878" },
+
+  { provider: "manheim", state: "NJ", city: "BORDENTOWN", label: "Manheim New Jersey", zip: "08505" },
+  { provider: "manheim", state: "NJ", city: "FAIRFIELD", label: "Manheim NY Metro Skyline", zip: "07004" },
+
+  { provider: "manheim", state: "NM", city: "ALBUQUERQUE", label: "Manheim New Mexico", zip: "87105" },
+
+  { provider: "manheim", state: "NY", city: "CLIFTON PARK", label: "Manheim Albany", zip: "12065" },
+  { provider: "manheim", state: "NY", city: "NEWBURGH", label: "Manheim New York", zip: "12550" },
+  { provider: "manheim", state: "NY", city: "ROCHESTER", label: "Manheim Rochester", zip: "14615" },
+
+  { provider: "manheim", state: "NC", city: "CONCORD", label: "Manheim Charlotte", zip: "28027" },
+  { provider: "manheim", state: "NC", city: "KENLY", label: "Manheim North Carolina", zip: "27542" },
+  { provider: "manheim", state: "NC", city: "STATESVILLE", label: "Manheim Statesville", zip: "28625" },
+  { provider: "manheim", state: "NC", city: "ROCKY POINT", label: "Manheim Wilmington", zip: "28457" },
+
+  { provider: "manheim", state: "OH", city: "HAMILTON", label: "Manheim Cincinnati", zip: "45011" },
+  { provider: "manheim", state: "OH", city: "BROOK PARK", label: "Manheim Cleveland", zip: "44142" },
+  { provider: "manheim", state: "OH", city: "GROVE CITY", label: "Manheim Ohio", zip: "43123" },
+
+  { provider: "manheim", state: "OK", city: "SAPULPA", label: "Manheim Tulsa", zip: "74066" },
+
+  { provider: "manheim", state: "OR", city: "PORTLAND", label: "Manheim Portland", zip: "97217" },
+
+  { provider: "manheim", state: "PA", city: "GRANTVILLE", label: "Manheim Keystone Pennsylvania", zip: "17028" },
+  { provider: "manheim", state: "PA", city: "MANHEIM", label: "Manheim Pennsylvania", zip: "17545" },
+  { provider: "manheim", state: "PA", city: "HATFIELD", label: "Manheim Philadelphia", zip: "19440" },
+  { provider: "manheim", state: "PA", city: "CRANBERRY TOWNSHIP", label: "Manheim Pittsburgh", zip: "16066" },
+
+  { provider: "manheim", state: "SC", city: "DARLINGTON", label: "Manheim Darlington", zip: "29532" },
+  { provider: "manheim", state: "SC", city: "GREER", label: "Manheim Greer Service Center", zip: "29651" },
+
+  { provider: "manheim", state: "TN", city: "MOUNT JULIET", label: "Manheim Nashville", zip: "37122" },
+
+  { provider: "manheim", state: "TX", city: "DALLAS", label: "Manheim Dallas", zip: "75236" },
+  { provider: "manheim", state: "TX", city: "EULESS", label: "Manheim Dallas-Fort Worth", zip: "76040" },
+  { provider: "manheim", state: "TX", city: "EL PASO", label: "Manheim El Paso", zip: "79932" },
+  { provider: "manheim", state: "TX", city: "HOUSTON", label: "Manheim Texas Hobby", zip: "77061" },
+  { provider: "manheim", state: "TX", city: "HOUSTON", label: "Manheim Houston", zip: "77041" },
+  { provider: "manheim", state: "TX", city: "PLANO", label: "Park Place Auto Auction Powered by Manheim", zip: "75093" },
+  { provider: "manheim", state: "TX", city: "SAN ANTONIO", label: "Manheim San Antonio", zip: "78219" },
+
+  { provider: "manheim", state: "UT", city: "WOODS CROSS", label: "Manheim Utah", zip: "84087" },
+
+  { provider: "manheim", state: "VA", city: "FREDERICKSBURG", label: "Manheim Fredericksburg", zip: "22406" },
+  { provider: "manheim", state: "VA", city: "HARRISONBURG", label: "Manheim Harrisonburg", zip: "22801" },
+
+  { provider: "manheim", state: "WA", city: "KENT", label: "Manheim Seattle", zip: "98032" },
+
+  { provider: "manheim", state: "WI", city: "CALEDONIA", label: "Manheim Milwaukee", zip: "53108" },
 
   // ===== IAAI (USA) — z Twojej listy =====
   { provider: "iaai", state: "TX", city: "ABILENE", zip: "79601" },
@@ -795,7 +915,7 @@ export default function Page() {
     const inland = Math.min(inlandPreClamp, INLAND_MAX);
 
     const oceanPreClamp = port.ocean * sizeOceanMult;
-    const ocean = Math.min(oceanPreClamp, 2750); // maksimum 2750$
+    const ocean = Math.min(oceanPreClamp, 2750);
     const auctionFee = calcAuctionFee(priceUSD);
     const insurance = insuranceEnabled ? Math.max(priceUSD * INSURANCE_RATE, INSURANCE_MIN) : 0;
 
@@ -833,11 +953,22 @@ export default function Page() {
     const totalPLN = usaTotalPLN + rotterdamTotalPLN + POLAND_FIXED_PLN + COMPANY_COMMISSION_PLN;
 
     const exciseGross = parseNum(exciseGrossPln);
-    // Zakładamy, że wpisywana "wartość pojazdu" jest BRUTTO (z VAT 23%).
-    // VAT = brutto - (brutto/1.23). Akcyza liczona od wartości netto.
     const exciseNet = exciseGross > 0 ? exciseGross / 1.23 : 0;
     const exciseVatPl = exciseGross > 0 ? exciseGross - exciseNet : 0;
     const exciseAmount = Math.max(0, exciseNet * exciseRate);
+
+    // ===== DEPOZYT I MAKS. LICYTACJA =====
+    const depositPLN = 3300;
+    const depositUSD = usdPlnSafe > 0 ? depositPLN / usdPlnSafe : 0;
+
+    const penaltyRateMap: Record<AuctionHouse, number> = {
+      copart: 0.10,
+      iaai: 0.15,
+      manheim: 0.30,
+    };
+
+    const penaltyRate = penaltyRateMap[auctionHouse];
+    const maxBidUSD = penaltyRate > 0 ? depositUSD / penaltyRate : 0;
 
     return {
       portName: port.name,
@@ -854,8 +985,11 @@ export default function Page() {
       exciseGross,
       exciseVatPl,
       exciseAmount,
+      depositUSD,
+      penaltyRate,
+      maxBidUSD,
     };
-  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln]);
+  }, [buyerType, vehiclePrice, extraCosts, insuranceEnabled, vehicleSize, zipCoord, usdPln, eurPln, exciseRate, exciseGrossPln, auctionHouse]);
 
   const handleLogin = () => {
     const ok = authInput === APP_PASSWORD;
@@ -963,6 +1097,7 @@ export default function Page() {
               >
                 <option value="copart">Copart</option>
                 <option value="iaai">IAAI</option>
+                <option value="manheim">Manheim</option>
               </select>
             </div>
           </div>
@@ -1118,20 +1253,20 @@ export default function Page() {
             <div className="text-lg font-semibold">{calc.portName}</div>
           </div>
 
-          <div className="border-t border-gray-700 pt-4\">
-            <div className="text-xs uppercase text-gray-400\">USA (USD)</div>
-            <div className="space-y-1 text-sm\">
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">USA (USD)</div>
+            <div className="space-y-1 text-sm">
               <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
               <div>Transport lądowy: {n2(calc.inland)}</div>
               <div>Transport morski: {n2(calc.ocean)}</div>
               <div>Ubezpieczenie: {n2(calc.insurance)}</div>
               <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
-              <div className="font-semibold\">Razem: {n2(calc.usaTotalUSD)}</div>
+              <div className="font-semibold">Razem: {n2(calc.usaTotalUSD)}</div>
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-4\">
-            <div className="text-xs uppercase text-gray-400\">Rotterdam (EUR)</div>
+          <div className="border-t border-gray-700 pt-4">
+            <div className="text-xs uppercase text-gray-400">Rotterdam (EUR)</div>
             <div className="space-y-1 text-sm">
               <div>Cło: {n2(calc.dutyEUR)}</div>
               <div>VAT: {n2(calc.vatEUR)}</div>
@@ -1148,15 +1283,27 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-6">
-            <div className="text-sm text-gray-400">Łączny koszt</div>
-            <div className="text-3xl font-bold tracking-tight">{n2(calc.totalPLN)} PLN</div>
+          <div className="mt-6 -mx-8 bg-black text-white rounded-2xl p-8 shadow-xl">
+            <div className="text-gray-400 text-sm">Łączny koszt</div>
+            <div className="text-3xl font-bold tracking-tight mt-2">{n2(calc.totalPLN)} PLN</div>
+          </div>
+
+          <div className="mt-6 -mx-8 bg-black text-white rounded-2xl p-8 shadow-xl">
+            <div className="text-xs uppercase tracking-wider text-gray-400">Depozyt 3300 PLN</div>
+            <div className="mt-4 space-y-1 text-sm">
+              <div>Depozyt w USD: {n2(calc.depositUSD)}</div>
+              <div>
+                Kara umowna ({(calc.penaltyRate * 100).toFixed(0)}%): {n2(calc.maxBidUSD * calc.penaltyRate)}
+              </div>
+              <div className="text-lg font-semibold mt-2">Maks. licytacja: {n2(calc.maxBidUSD)} USD</div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto mt-6 text-center text-[11px] text-gray-500">
-        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od rzeczywistych kosztów.
+        To narzędzie ma charakter wyłącznie poglądowy i służy jedynie do celów zabawy. Wyliczenia mogą różnić się od
+        rzeczywistych kosztów.
       </div>
     </div>
   );
