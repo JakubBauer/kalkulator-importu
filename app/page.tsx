@@ -546,7 +546,6 @@ function searchYards(query: string, provider: AuctionHouse, limit = 12) {
     } else if (hay.includes(q)) {
       contains.push(y);
     }
-    if (starts.length + contains.length >= limit) break;
   }
 
   return [...starts, ...contains].slice(0, limit);
@@ -635,15 +634,29 @@ function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number) 
 }
 
 async function geocodeZipUS(zip: string) {
-  if (!zip) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&postalcode=${encodeURIComponent(
-    zip
-  )}`;
-  const res = await fetch(url);
+  const z = zip?.trim();
+  if (!z) return null;
+
+  // Nominatim bywa kapryśny na postalcode=, więc korzystamy z q=
+  const url =
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=` +
+    encodeURIComponent(z);
+
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
   if (!res.ok) return null;
   const data = await res.json();
-  if (!data?.length) return null;
-  return { lat: Number(data[0].lat), lon: Number(data[0].lon) } as { lat: number; lon: number };
+  if (!Array.isArray(data) || data.length === 0) return null;
+
+  const lat = Number(data[0].lat);
+  const lon = Number(data[0].lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  return { lat, lon } as { lat: number; lon: number };
 }
 
 async function fetchNBPRate(code: string) {
@@ -709,17 +722,21 @@ export default function Page() {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      const z = zip.trim();
-      if (z.length < 3) {
-        setZipCoord(null);
-        return;
-      }
+    const z = zip.trim();
+
+    if (z.length < 3) {
+      setZipCoord(null);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
       const c = await geocodeZipUS(z);
       if (alive) setZipCoord(c);
-    })();
+    }, 350);
+
     return () => {
       alive = false;
+      window.clearTimeout(t);
     };
   }, [zip]);
 
@@ -973,8 +990,16 @@ export default function Page() {
                 if (yardQuery.trim().length > 0) setYardOpen(true);
               }}
               onChange={(e) => {
-                setYardQuery(e.target.value);
+                const v = e.target.value;
+                setYardQuery(v);
                 setSelectedYard(null);
+
+                // Jeśli ktoś wpisze ZIP w polu "Plac", traktujemy to jako ZIP (bez wyboru placu)
+                const maybeZip = v.replace(/[^0-9]/g, "").slice(0, 5);
+                if (maybeZip.length === 5) {
+                  setZip(maybeZip);
+                }
+
                 setYardOpen(true);
               }}
               onKeyDown={(e) => {
@@ -1093,20 +1118,20 @@ export default function Page() {
             <div className="text-lg font-semibold">{calc.portName}</div>
           </div>
 
-          <div className=\"border-t border-gray-700 pt-4\">
-            <div className=\"text-xs uppercase text-gray-400\">USA (USD)</div>
-            <div className=\"space-y-1 text-sm\">
+          <div className="border-t border-gray-700 pt-4\">
+            <div className="text-xs uppercase text-gray-400\">USA (USD)</div>
+            <div className="space-y-1 text-sm\">
               <div>Cena z prowizją domu aukcyjnego: {n2(parseNum(vehiclePrice) + calc.auctionFee)}</div>
               <div>Transport lądowy: {n2(calc.inland)}</div>
               <div>Transport morski: {n2(calc.ocean)}</div>
               <div>Ubezpieczenie: {n2(calc.insurance)}</div>
               <div>Dodatkowe koszty: {n2(parseNum(extraCosts))}</div>
-              <div className=\"font-semibold\">Razem: {n2(calc.usaTotalUSD)}</div>
+              <div className="font-semibold\">Razem: {n2(calc.usaTotalUSD)}</div>
             </div>
           </div>
 
-          <div className=\"border-t border-gray-700 pt-4\">
-            <div className=\"text-xs uppercase text-gray-400\">Rotterdam (EUR)</div>
+          <div className="border-t border-gray-700 pt-4\">
+            <div className="text-xs uppercase text-gray-400\">Rotterdam (EUR)</div>
             <div className="space-y-1 text-sm">
               <div>Cło: {n2(calc.dutyEUR)}</div>
               <div>VAT: {n2(calc.vatEUR)}</div>
