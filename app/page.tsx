@@ -794,7 +794,7 @@ const CLIENT_EXTRA_SPLIT = {
 
   brokerFee: 0.15, // Opłata brokerska
   safeLoading: 0.1, // Bezpieczny załadunek
-  unloading: 0.1, // Rozładunek
+  unloading: 0.1, // Bezpieczny rozładunek
   securingMaterials: 0.1, // Materiały zabezpieczające
   usaService: 0.15, // Obsługa USA
 } as const;
