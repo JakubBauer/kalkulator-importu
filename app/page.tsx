@@ -646,6 +646,12 @@ function yardDisplay(y: Yard) {
 function searchYards(query: string, provider: AuctionHouse, limit = 12) {
   const q = normalize(query);
   if (!q) return [] as Yard[];
+  function isZipInAnyYard(zip: string) {
+  const z = (zip || "").trim().slice(0, 5);
+  if (z.length !== 5) return false;
+  return YARDS_USA.some((y) => y.zip === z);
+}
+
 
   const byProvider = YARDS_USA.filter((y) => y.provider === provider);
   const starts: Yard[] = [];
@@ -1076,9 +1082,13 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     const sizeOceanMult = SIZE_MULTIPLIERS[vehicleSize];
     const sizeInlandMult = INLAND_SIZE_MULTIPLIERS[vehicleSize];
 
-    const baseInland = zipCoord ? bestMiles * INLAND_RATE : INLAND_MIN;
-    const inlandPreClamp = Math.max(baseInland, INLAND_MIN) * sizeInlandMult;
-    const inland = Math.min(inlandPreClamp, INLAND_MAX);
+   const zipKnown = isZipInAnyYard(zip);
+const inlandMinDynamic = zipKnown ? INLAND_MIN : 1000;
+
+const baseInland = zipCoord ? bestMiles * INLAND_RATE : inlandMinDynamic;
+const inlandPreClamp = Math.max(baseInland, inlandMinDynamic) * sizeInlandMult;
+const inland = Math.min(inlandPreClamp, INLAND_MAX);
+
 
     const oceanPreClamp = port.ocean * sizeOceanMult;
     const ocean = Math.min(oceanPreClamp, 2750);
