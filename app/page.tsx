@@ -627,6 +627,11 @@ const YARDS_USA: Yard[] = [
 
   // ===== END IAAI =====
 ];
+function isZipInAnyYard(zip: string) {
+  const z = (zip || "").trim().slice(0, 5);
+  if (z.length !== 5) return false;
+  return YARDS_USA.some((y) => y.zip === z);
+}
 // NOTE: Nie używamy \p{...} (Unicode Property Escapes), bo w części środowisk (np. pewne bundlery/wykonania)
 // może to rzucać błędem typu "Invalid regular expression".
 function normalize(s: string) {
