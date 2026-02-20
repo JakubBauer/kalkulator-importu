@@ -1261,7 +1261,7 @@ const inland = Math.min(inlandPreClamp, INLAND_MAX);
                 tab === "client" ? "bg-black text-white border-black" : "bg-white hover:bg-slate-50"
               }`}
             >
-              Rozliczenie dla klienta
+              Rozliczenie pod dom
             </button>
           </div>
 
