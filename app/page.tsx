@@ -727,7 +727,7 @@ const INLAND_MIN = 400; // minimum 400$
 const INLAND_MAX = 2000; // maksimum 2000$
 
 const INSURANCE_RATE = 0.02;
-const INSURANCE_MIN = 200;
+const INSURANCE_MIN = 400;
 
 const CUSTOMS_AGENCY_EUR = 500;
 const POLAND_FIXED_PLN = 2800;
